@@ -1,0 +1,102 @@
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")  // Ajusta tu variable de entorno .env
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// ========================
+//  USERS
+// ========================
+model User {
+  id             BigInt   @id @default(autoincrement()) @db.BigInt
+  firebaseUid    String   @unique    // UID de Firebase
+  email          String   @unique    
+  displayName    String?
+  phoneNumber    String?
+  createdAt      DateTime @default(now())
+
+  // Relations
+  orders         Order[]
+  tickets        Ticket[]
+}
+
+// ========================
+//  VENUES
+// ========================
+model Venue {
+  id              BigInt   @id @default(autoincrement()) @db.BigInt
+  name            String
+  city            String
+  address         String
+  capacity        Int
+  contactDetails  String?
+
+  // Relations
+  events          Event[]
+}
+
+// ========================
+//  EVENTS
+// ========================
+model Event {
+  id                BigInt   @id @default(autoincrement()) @db.BigInt
+  title             String
+  venueId           BigInt?
+  dateTime          DateTime
+  city              String
+  price             Decimal  @db.Decimal(10, 2)
+  availableTickets  Int
+  description       String?
+    poster          String?  
+
+  // Relation to Venue
+  venue   Venue? @relation(fields: [venueId], references: [id])
+  tickets Ticket[]
+}
+
+// ========================
+//  TICKETS
+// ========================
+model Ticket {
+  id            BigInt   @id @default(autoincrement()) @db.BigInt
+  userId        BigInt?
+  eventId       BigInt?
+  purchaseDate  DateTime @default(now())
+  ticketType    String?
+
+  // Relations
+  user    User?   @relation(fields: [userId], references: [id])
+  event   Event?  @relation(fields: [eventId], references: [id])
+}
+
+// ========================
+//  ORDERS
+// ========================
+model Order {
+  id           BigInt   @id @default(autoincrement()) @db.BigInt
+  userId       BigInt?
+  createdAt    DateTime @default(now())
+  totalAmount  Decimal  @db.Decimal(10, 2)
+  status       String
+
+  // Relations
+  user     User?    @relation(fields: [userId], references: [id])
+  payments Payment[]
+}
+
+// ========================
+//  PAYMENTS
+// ========================
+model Payment {
+  id              BigInt   @id @default(autoincrement()) @db.BigInt
+  orderId         BigInt?
+  stripePaymentId String?  
+  paymentDate     DateTime @default(now())
+  paymentStatus   String
+
+  // Relation
+  order   Order? @relation(fields: [orderId], references: [id])
+}
