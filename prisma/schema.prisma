@@ -1,6 +1,6 @@
 datasource db {
   provider = "mysql"
-  url      = env("DATABASE_URL")  // Ajusta tu variable de entorno .env
+  url      = env("DATABASE_URL") // Ajusta tu variable de entorno .env
 }
 
 generator client {
@@ -11,9 +11,9 @@ generator client {
 //  USERS
 // ========================
 model User {
-  id             BigInt   @id @default(autoincrement()) @db.BigInt
+  id             Int      @id @default(autoincrement())
   firebaseUid    String   @unique    // UID de Firebase
-  email          String   @unique    
+  email          String   @unique
   displayName    String?
   phoneNumber    String?
   createdAt      DateTime @default(now())
@@ -27,7 +27,7 @@ model User {
 //  VENUES
 // ========================
 model Venue {
-  id              BigInt   @id @default(autoincrement()) @db.BigInt
+  id              Int      @id @default(autoincrement())
   name            String
   city            String
   address         String
@@ -42,18 +42,18 @@ model Venue {
 //  EVENTS
 // ========================
 model Event {
-  id                BigInt   @id @default(autoincrement()) @db.BigInt
+  id                Int      @id @default(autoincrement())
   title             String
-  venueId           BigInt?
+  venueId           Int?
   dateTime          DateTime
   city              String
-  price             Decimal  @db.Decimal(10, 2)
+  price             Decimal   @db.Decimal(10, 2)
   availableTickets  Int
-  description       String?
-    poster          String?  
-
+  description       String?   @db.Text
+  poster            String?   @db.Text
+  
   // Relation to Venue
-  venue   Venue? @relation(fields: [venueId], references: [id])
+  venue   Venue?    @relation(fields: [venueId], references: [id])
   tickets Ticket[]
 }
 
@@ -61,9 +61,9 @@ model Event {
 //  TICKETS
 // ========================
 model Ticket {
-  id            BigInt   @id @default(autoincrement()) @db.BigInt
-  userId        BigInt?
-  eventId       BigInt?
+  id            Int      @id @default(autoincrement())
+  userId        Int?
+  eventId       Int?
   purchaseDate  DateTime @default(now())
   ticketType    String?
 
@@ -76,8 +76,8 @@ model Ticket {
 //  ORDERS
 // ========================
 model Order {
-  id           BigInt   @id @default(autoincrement()) @db.BigInt
-  userId       BigInt?
+  id           Int      @id @default(autoincrement())
+  userId       Int?
   createdAt    DateTime @default(now())
   totalAmount  Decimal  @db.Decimal(10, 2)
   status       String
@@ -91,9 +91,9 @@ model Order {
 //  PAYMENTS
 // ========================
 model Payment {
-  id              BigInt   @id @default(autoincrement()) @db.BigInt
-  orderId         BigInt?
-  stripePaymentId String?  
+  id              Int      @id @default(autoincrement())
+  orderId         Int?
+  stripePaymentId String?
   paymentDate     DateTime @default(now())
   paymentStatus   String
 
