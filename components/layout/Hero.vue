@@ -13,7 +13,7 @@ onMounted(() => {
 
 <template>
   <!-- Fondo de blobs -->
-  <div class="gradient-bg absolute inset-0">
+  <div class="gradient-bg absolute inset-0 flex items-center justify-center w-[100%]">
     <div class="gradients-container absolute inset-0" :class="{ 'loaded': isLoaded }">
       <div class="blob blob1 bg-gradient-to-br from-[#15469F] to-[#F1C80C]"></div>
       <div class="blob blob2 bg-gradient-to-br from-[#15469F] to-[#86378E]"></div>
@@ -21,8 +21,8 @@ onMounted(() => {
     </div>
   </div>
   
-  <!-- Tu código original exactamente igual -->
-  <div class="hero max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-auto pt-28 flex flex-col items-center justify-center">
+
+  <div class="hero max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8 h-auto pt-28 flex flex-col items-center justify-center">
     <div class="cta text-center">
       <h1 class="text-5xl font-bold text-gray-900">Bienvenido a EasySpot!</h1>
       <h2 class="text-2xl font-light text-gray-900 mt-2">Desbloquea un mundo de eventos</h2>

@@ -8,9 +8,12 @@ const { data: events, pending } = useFetch('/api/events')
   </div>
 
   <div v-else class="w-full max-w-[1200px] mx-auto mt-5 p-5">
-    <div class="flex gap-4 overflow-x-auto scrollbar-hide mt-5 p-5">
+    <h2 class="text-left text-3xl font-semibold text-gray-900 mb-6">
+      Eventos Populares
+    </h2>
+    <div class="flex gap-4 overflow-x-auto scrollbar-hide mt-5 p-5 w-full">
       <LayoutFeaturedCard 
-        v-for="event in events?.data || []" 
+        v-for="event in (events?.data ? events.data.slice(0, 4) : [])" 
         :key="event.id" 
         :event="event"
       />

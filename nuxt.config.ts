@@ -5,17 +5,24 @@ export default defineNuxtConfig({
   devtools: { enabled: true },
   css: [
     '~/assets/css/main.css',
-    'primeicons/primeicons.css'  // <-- Agregado aquí
+    'primeicons/primeicons.css'
   ],
   modules: [
     '@primevue/nuxt-module',
-    '@nuxtjs/tailwindcss'
+    '@nuxtjs/tailwindcss',
+    '@pinia/nuxt'
   ],
   primevue: {
     options: {
       theme: {
         preset: Aura
       }
+    }
+  },
+  runtimeConfig: {
+    stripeSecretKey: process.env.STRIPE_SECRET_KEY,
+    public: {
+      stripePublicKey: process.env.STRIPE_PUBLIC_KEY
     }
   }
 });

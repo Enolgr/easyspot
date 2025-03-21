@@ -7,6 +7,8 @@
 </div>
       <LayoutHero/> 
       <LayoutTrendingCategories/>
+      <LayoutEventgrid/>
+      <LayoutFooter/>
     </main>
   </template>
   
