@@ -57,10 +57,10 @@ html, body {
 
 .blob {
   position: absolute;
-  width: 300px;
-  height: 300px;
+  width: 500px;
+  height: 500px;
   border-radius: 50%;
-  opacity: 0.7;
+  opacity: 0.4;
   mix-blend-mode: screen;
   visibility: hidden;
 }

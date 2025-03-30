@@ -67,7 +67,7 @@ export default defineEventHandler(async (event) => {
         data: {
           user: { connect: { email: userEmail } },
           event: { connect: { id: parseInt(eventId) } },
-          ticketType: 'entrada', // o el tipo que corresponda
+          ticketType: 'entrada', 
         },
       });
     } catch (dbError) {

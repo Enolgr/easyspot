@@ -18,7 +18,7 @@ export default defineEventHandler(async (event) => {
         firebaseUid: uid,
         email,
         displayName,
-        phoneNumber: null  // Si no tienes teléfono, lo puedes dejar como null o usar photoURL si lo deseas
+        phoneNumber: null 
       }
     })
     console.log('Usuario creado:', newUser)
