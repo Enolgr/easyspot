@@ -1,32 +1,36 @@
-import { PrismaClient } from '@prisma/client';
-const prisma = new PrismaClient();
+import { PrismaClient } from '@prisma/client'
+const prisma = new PrismaClient()
 
 export default defineEventHandler(async (event) => {
-  // Obtener el parámetro session_id desde la query string
-  const { session_id } = getQuery(event);
+  const { session_id } = getQuery(event)
+
   if (!session_id) {
-    throw createError({ statusCode: 400, message: 'session_id es requerido' });
+    throw createError({ statusCode: 400, message: 'session_id es requerido' })
   }
 
-  // Buscar la orden relacionada con el session_id en la tabla Payment
-  const order = await prisma.order.findFirst({
-    where: {
-      payments: {
-        some: {
-          stripePaymentId: session_id,
-        },
+  try {
+    const order = await prisma.order.findFirst({
+      where: {
+        payments: {
+          some: {
+            checkoutSessionId: session_id, // ✅ CAMBIO AQUÍ
+          }
+        }
       },
-    },
-    include: { 
-      tickets: true,
-      payments: true,
-      user: true,
+      include: {
+        tickets: true,
+        payments: true,
+        user: true
+      }
+    })
+
+    if (!order) {
+      throw createError({ statusCode: 404, message: 'Orden no encontrada' })
     }
-  });
 
-  if (!order) {
-    throw createError({ statusCode: 404, message: 'Orden no encontrada' });
+    return { order }
+  } catch (error) {
+    console.error('Error al buscar la orden por session_id:', error)
+    throw createError({ statusCode: 500, message: 'Error interno del servidor' })
   }
-
-  return { order };
-});
+})

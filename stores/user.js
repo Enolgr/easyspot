@@ -1,29 +1,20 @@
 export const useUserStore = defineStore('user', {
   state: () => ({
-    currentUser: null
+    user: null,
+    isReady: false
   }),
   actions: {
-    async setUser(user) {
-      // Actualiza el estado en el store
-      this.currentUser = user
-
-      // Llama al endpoint de Nuxt para guardar el usuario en la base de datos
-      try {
-        const response = await $fetch('/api/users', {
-          method: 'POST',
-          body: user
-        })
-        console.log('Usuario guardado:', response)
-      } catch (error) {
-        console.error('Error al guardar el usuario:', error)
-      }
+    setUser(userData) {
+      this.user = userData
+      this.isReady = true
     },
-    logout() {
-      this.currentUser = null
+    clearUser() {
+      this.user = null
+      this.isReady = true
     }
   },
   getters: {
-    isLoggedIn: (state) => !!state.currentUser
+    isLoggedIn: (state) => !!state.user
   },
-  persist: true  // Persiste el estado en el navegador
+  persist: true
 })

@@ -1,102 +1,82 @@
-datasource db {
-  provider = "mysql"
-  url      = env("DATABASE_URL") // Ajusta tu variable de entorno .env
-}
-
 generator client {
   provider = "prisma-client-js"
 }
 
-// ========================
-//  USERS
-// ========================
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
 model User {
-  id             Int      @id @default(autoincrement())
-  firebaseUid    String   @unique    // UID de Firebase
-  email          String   @unique
-  displayName    String?
-  phoneNumber    String?
-  createdAt      DateTime @default(now())
-
-  // Relations
-  orders         Order[]
-  tickets        Ticket[]
+  id          Int      @id @default(autoincrement())
+  firebaseUid String   @unique
+  email       String   @unique
+  displayName String?
+  createdAt   DateTime @default(now())
+  orders      Order[]
+  tickets     Ticket[]
 }
 
-// ========================
-//  VENUES
-// ========================
 model Venue {
-  id              Int      @id @default(autoincrement())
-  name            String
-  city            String
-  address         String
-  capacity        Int
-  contactDetails  String?
-
-  // Relations
-  events          Event[]
+  id             Int     @id @default(autoincrement())
+  name           String
+  city           String
+  address        String
+  capacity       Int
+  contactDetails String?
+  events         Event[]
 }
 
-// ========================
-//  EVENTS
-// ========================
 model Event {
-  id                Int      @id @default(autoincrement())
-  title             String
-  venueId           Int?
-  dateTime          DateTime
-  city              String
-  price             Decimal   @db.Decimal(10, 2)
-  availableTickets  Int
-  description       String?   @db.Text
-  poster            String?   @db.Text
-  
-  // Relation to Venue
-  venue   Venue?    @relation(fields: [venueId], references: [id])
-  tickets Ticket[]
+  id               Int      @id @default(autoincrement())
+  title            String
+  venueId          Int?
+  dateTime         DateTime
+  city             String
+  price            Decimal  @db.Decimal(10, 2)
+  availableTickets Int
+  description      String?  @db.Text
+  poster           String?  @db.Text
+  venue            Venue?   @relation(fields: [venueId], references: [id])
+  tickets          Ticket[]
+
+  @@index([venueId], map: "Event_venueId_fkey")
 }
 
-// ========================
-//  TICKETS
-// ========================
 model Ticket {
-  id            Int      @id @default(autoincrement())
-  userId        Int?
-  eventId       Int?
-  purchaseDate  DateTime @default(now())
-  ticketType    String?
-
-  // Relations
-  user    User?   @relation(fields: [userId], references: [id])
-  event   Event?  @relation(fields: [eventId], references: [id])
-}
-
-// ========================
-//  ORDERS
-// ========================
-model Order {
   id           Int      @id @default(autoincrement())
   userId       Int?
-  createdAt    DateTime @default(now())
-  totalAmount  Decimal  @db.Decimal(10, 2)
-  status       String
+  eventId      Int?
+  purchaseDate DateTime @default(now())
+  qr           String   @unique
+  orderId      Int?
+  event        Event?   @relation(fields: [eventId], references: [id])
+  order        Order?   @relation(fields: [orderId], references: [id])
+  user         User?    @relation(fields: [userId], references: [id])
 
-  // Relations
-  user     User?    @relation(fields: [userId], references: [id])
-  payments Payment[]
+  @@index([eventId], map: "Ticket_eventId_fkey")
+  @@index([orderId], map: "Ticket_orderId_fkey")
+  @@index([userId], map: "Ticket_userId_fkey")
 }
 
-// ========================
-//  PAYMENTS
-// ========================
-model Payment {
-  id              Int      @id @default(autoincrement())
-  orderId         Int?
-  stripePaymentId String?
-  paymentDate     DateTime @default(now())
-  paymentStatus   String
+model Order {
+  id          Int       @id @default(autoincrement())
+  userId      Int?
+  createdAt   DateTime  @default(now())
+  totalAmount Decimal   @db.Decimal(10, 2)
+  status      String
+  user        User?     @relation(fields: [userId], references: [id])
+  payments    Payment[]
+  tickets     Ticket[]
 
-  // Relation
-  order   Order? @relation(fields: [orderId], references: [id])
+  @@index([userId], map: "Order_userId_fkey")
+}
+
+model Payment {
+  id                Int     @id @default(autoincrement())
+  stripePaymentId   String
+  checkoutSessionId String  @unique
+  paymentStatus     String
+  order             Order   @relation(fields: [orderId], references: [id])
+  orderId           Int
 }

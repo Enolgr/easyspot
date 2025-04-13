@@ -1,69 +1,71 @@
 <script setup>
-import { ref, onMounted, watch } from 'vue';
-import { useRouter } from 'vue-router';
-import { useUserStore } from '@/stores/user';
+import { ref, onMounted, watch } from 'vue'
+import { useRouter } from 'vue-router'
+import { useUserStore } from '@/stores/user'
+import { signOut } from 'firebase/auth'
 
 definePageMeta({
   middleware: 'auth'
 })
 
-const isLoaded = ref(false);
-const showImageOptions = ref(false);
-const placeholder = '/placeholder.svg?height=150&width=150';
+const isLoaded = ref(false)
+const showImageOptions = ref(false)
+const placeholder = '/placeholder.svg?height=150&width=150'
 
-const userStore = useUserStore();
-const router = useRouter();
+const userStore = useUserStore()
+const router = useRouter()
+const { $auth } = useNuxtApp()
 
-// Variables reactivas para el nombre y la imagen de perfil
-const userName = ref('Usuario EasySpot');
-const profileImage = ref(placeholder);
+const userName = ref('Usuario EasySpot')
+const profileImage = ref(placeholder)
 
-// Observa la propiedad currentUser del store para actualizar el nombre y la imagen
+
 watch(
-  () => userStore.currentUser,
+  () => userStore.user,
   (newUser) => {
     if (newUser) {
-      userName.value = newUser.displayName || 'Usuario EasySpot';
-      profileImage.value = newUser.photoURL || placeholder;
+      userName.value = newUser.displayName || 'Usuario EasySpot'
+      profileImage.value = newUser.photoURL || placeholder
     } else {
-      userName.value = 'Usuario EasySpot';
-      profileImage.value = placeholder;
+      userName.value = 'Usuario EasySpot'
+      profileImage.value = placeholder
     }
   },
   { immediate: true }
-);
+)
 
 onMounted(() => {
   setTimeout(() => {
-    isLoaded.value = true;
-  }, 500);
-});
+    isLoaded.value = true
+  }, 500)
+})
 
 const toggleImageOptions = () => {
-  showImageOptions.value = !showImageOptions.value;
-};
+  showImageOptions.value = !showImageOptions.value
+}
 
 const handleImageUpload = (event) => {
-  const file = event.target.files[0];
+  const file = event.target.files[0]
   if (file) {
-    const reader = new FileReader();
+    const reader = new FileReader()
     reader.onload = (e) => {
-      profileImage.value = e.target.result;
-      showImageOptions.value = false;
-    };
-    reader.readAsDataURL(file);
+      profileImage.value = e.target.result
+      showImageOptions.value = false
+    }
+    reader.readAsDataURL(file)
   }
-};
+}
 
 const showQR = (eventId) => {
-  console.log('Mostrando QR para el evento:', eventId);
-};
+  console.log('Mostrando QR para el evento:', eventId)
+}
 
-// Función para cerrar sesión: limpia el usuario del store y redirige al home
-const logout = () => {
-  userStore.logout();
-  router.push('/');
-};
+// ✅ CORREGIDO: logout con signOut y limpieza del store
+const logout = async () => {
+  await signOut($auth)
+  userStore.clearUser()
+  router.push('/login')
+}
 </script>
 
 <template>

@@ -10,9 +10,13 @@ export default defineEventHandler(async (event) => {
   }
 
   const body = await readBody(event);
-  const { eventId, quantity } = body;
+  const { eventId, quantity, userEmail, firebaseUid } = body;
 
-  // Se obtiene la información completa del evento desde tu API interna
+  if (!eventId || !userEmail || !firebaseUid) {
+    throw createError({ statusCode: 400, message: 'Faltan datos necesarios para procesar el pago' });
+  }
+
+  // Se obtiene la información del evento desde la API interna
   let eventData;
   try {
     eventData = await $fetch(`/api/events/${eventId}`);
@@ -20,18 +24,15 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 500, message: 'No se pudo obtener la información del evento' });
   }
 
-  // Extraer los datos necesarios del evento
   const { title, description, poster, price, dateTime, venue } = eventData.data;
-  
-  // Formatear fecha y hora para la descripción
+
   const eventDate = new Date(dateTime);
-  const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: 'numeric', minute: 'numeric' };
+  const options = {
+    weekday: 'long', year: 'numeric', month: 'long',
+    day: 'numeric', hour: 'numeric', minute: 'numeric'
+  };
   const formattedDateTime = new Intl.DateTimeFormat('es-ES', options).format(eventDate);
-
-  // Se puede incluir el precio y la sala en la descripción
   const details = ` ${formattedDateTime} · Sala: ${venue.name}`;
-
-  // Calcular el precio unitario en céntimos (asumiendo que "price" es en euros)
   const unitAmount = Math.round(price * 100);
 
   const origin = event.node.req.headers.origin || 'http://localhost:3000';
@@ -54,7 +55,12 @@ export default defineEventHandler(async (event) => {
       mode: 'payment',
       success_url: `${origin}/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/events/${eventId}`,
-      metadata: { eventId }
+      metadata: {
+        eventId,
+        quantity,
+        userEmail,
+        firebaseUid
+      }
     });
 
     return { sessionId: session.id };

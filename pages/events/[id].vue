@@ -52,29 +52,40 @@ loadStripe(stripePublicKey).then((s) => {
 });
 
 async function handleCheckout() {
-  // Verifica si el usuario está logueado
-  if (!userStore.isLoggedIn) {
-    router.push('/login');
-    return;
+  if (!userStore.isLoggedIn || !userStore.user) {
+    router.push('/login')
+    return
   }
-  
+
+  const { email, uid } = userStore.user
+
+  if (!email || !uid) {
+    console.error('Faltan email o uid del usuario')
+    return
+  }
+
   try {
     const response = await $fetch('/api/stripe-checkout', {
       method: 'POST',
       body: {
         eventId: id,
-        quantity: ticketQuantity.value
+        quantity: ticketQuantity.value,
+        userEmail: email,
+        firebaseUid: uid
       }
-    });
-    const { sessionId } = response;
-    const { error } = await stripe.redirectToCheckout({ sessionId });
+    })
+
+    const { sessionId } = response
+    const { error } = await stripe.redirectToCheckout({ sessionId })
     if (error) {
-      console.error('Error en el redireccionamiento:', error);
+      console.error('Error en el redireccionamiento:', error)
     }
   } catch (err) {
-    console.error('Error al crear la sesión de pago:', err);
+    console.error('Error al crear la sesión de pago:', err)
   }
 }
+
+
 </script>
 
 <template>

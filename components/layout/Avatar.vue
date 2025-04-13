@@ -2,13 +2,10 @@
 import { RouterLink } from 'vue-router'
 import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { useUserStore } from '@/stores/user'
+import { signOut } from 'firebase/auth'
 
 const isOpen = ref(false)
-
-const toggleDropdown = () => {
-  isOpen.value = !isOpen.value
-}
-
+const toggleDropdown = () => { isOpen.value = !isOpen.value }
 const closeDropdown = (e) => {
   if (!e.target.closest('.avatar-dropdown')) {
     isOpen.value = false
@@ -18,18 +15,21 @@ const closeDropdown = (e) => {
 onMounted(() => {
   document.addEventListener('click', closeDropdown)
 })
-
 onUnmounted(() => {
   document.removeEventListener('click', closeDropdown)
 })
 
 const userStore = useUserStore()
-const isLoggedIn = computed(() => userStore.isLoggedIn)
-const currentUserName = computed(() => userStore.currentUser?.displayName || '')
-const currentUserImage = computed(() => userStore.currentUser?.photoURL || '')
+const { $auth } = useNuxtApp()
 
-const logout = () => {
-  userStore.logout()
+const isLoggedIn = computed(() => userStore.isLoggedIn)
+
+const currentUserName = computed(() => userStore.user?.displayName || '')
+const currentUserImage = computed(() => userStore.user?.photoURL || '')
+
+const logout = async () => {
+  await signOut($auth)
+  userStore.clearUser()
 }
 </script>
 
@@ -48,7 +48,6 @@ const logout = () => {
         @click="toggleDropdown"
         class="relative overflow-hidden w-full border-0 bg-transparent flex items-center hover:bg-surface-100 dark:hover:bg-surface-800 rounded-none cursor-pointer transition-colors duration-200"
       >
-        <!-- Si el usuario tiene imagen, se muestra; de lo contrario se usa un ícono -->
         <img 
           :src="currentUserImage" 
           v-if="currentUserImage"
@@ -61,7 +60,6 @@ const logout = () => {
         </span>
       </button>
 
-      <!-- Dropdown de opciones -->
       <transition 
         name="dropdown"
         enter-active-class="transition ease-out duration-200"

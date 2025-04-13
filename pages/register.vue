@@ -43,20 +43,24 @@ const googleSignIn = async () => {
   try {
     const provider = new GoogleAuthProvider()
     const result = await signInWithPopup($auth, provider)
-    
-    userStore.setUser({
-      uid: result.user.uid,
-      email: result.user.email,
-      displayName: result.user.displayName,
-      photoURL: result.user.photoURL
+
+    const { uid, email, displayName, photoURL } = result.user
+
+    // 🔄 Sincronizar con la base de datos
+    await $fetch('/api/auth/sync-user', {
+      method: 'POST',
+      body: { uid, email, displayName }
     })
-    
+
+    userStore.setUser({ uid, email, displayName, photoURL })
     navigateTo('/')
   } catch (error) {
     console.error('Error al iniciar sesión con Google:', error.message)
     alert(error.message)
   }
 }
+
+
 </script>
 
 <template>

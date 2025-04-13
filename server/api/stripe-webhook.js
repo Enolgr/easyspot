@@ -1,81 +1,122 @@
-// server/api/stripe-webhook.js
-import Stripe from 'stripe';
-import { PrismaClient } from '@prisma/client';
+export const config = {
+  bodyParser: false
+}
 
-const prisma = new PrismaClient();
-const config = useRuntimeConfig();
-const stripe = new Stripe(config.stripeSecretKey);
+import Stripe from 'stripe'
+import { PrismaClient } from '@prisma/client'
+
+const prisma = new PrismaClient()
+const runtimeConfig = useRuntimeConfig()
+const stripe = new Stripe(runtimeConfig.stripeSecretKey)
 
 export default defineEventHandler(async (event) => {
-  // Es importante usar el raw body para verificar la firma del webhook
-  const sig = event.node.req.headers['stripe-signature'];
-  let stripeEvent;
+  const sig = event.node.req.headers['stripe-signature']
+  const rawBody = event.node.req.rawBody || await readRawBody(event)
+
+  let stripeEvent
 
   try {
-    // Construir el evento verificando la firma
     stripeEvent = stripe.webhooks.constructEvent(
-      event.req.rawBody, 
-      sig, 
+      rawBody,
+      sig,
       process.env.STRIPE_WEBHOOK_SECRET
-    );
+    )
   } catch (err) {
-    throw createError({ statusCode: 400, message: `Webhook Error: ${err.message}` });
+    console.error('❌ Firma inválida de Stripe:', err.message)
+    throw createError({ statusCode: 400, message: `Webhook Error: ${err.message}` })
   }
 
-  // Procesar el evento de pago exitoso
-  if (stripeEvent.type === 'checkout.session.completed') {
-    const session = stripeEvent.data.object;
-    
-    // Extraer datos relevantes: puedes almacenar eventId en metadata y tener información de usuario
-    const eventId = session.metadata.eventId;
-    const quantity = session.metadata.quantity || 1; // Asegúrate de enviar esto en metadata si lo necesitas
-    const stripePaymentId = session.payment_intent;
-    const amountTotal = session.amount_total; // en céntimos
+  const { type, data } = stripeEvent
+  const session = data.object
 
-    // Supongamos que el usuario ya está autenticado o lo identificas mediante algún campo en metadata
-    const userEmail = session.customer_details.email;
+  if (type === 'checkout.session.completed') {
+    console.log('✅ Webhook recibido - checkout.session.completed')
+    console.log('📦 session.id:', session.id)
+
+    const eventId = session.metadata?.eventId
+    const quantity = parseInt(session.metadata?.quantity || '1')
+    const stripePaymentId = session.payment_intent
+    const sessionId = session.id
+    const amountTotal = session.amount_total
+    const userEmail = session.customer_details?.email
+    const firebaseUid = session.metadata?.firebaseUid || 'unknown'
+
+    console.log('📨 Datos recibidos:', {
+      eventId,
+      quantity,
+      stripePaymentId,
+      sessionId,
+      amountTotal,
+      userEmail,
+      firebaseUid
+    })
+
+    if (!eventId || !userEmail || !amountTotal) {
+      console.error('⚠️ Webhook incompleto - Faltan datos')
+      return
+    }
 
     try {
-      // Actualizar el evento: descontar las entradas compradas
+      const user = await prisma.user.upsert({
+        where: { email: userEmail },
+        update: {},
+        create: {
+          email: userEmail,
+          firebaseUid
+        }
+      })
+      console.log('👤 Usuario verificado/creado')
+
       await prisma.event.update({
         where: { id: parseInt(eventId) },
-        data: { 
+        data: {
           availableTickets: { decrement: quantity }
         }
-      });
+      })
+      console.log('🎟️ Tickets disponibles actualizados')
 
-      // Crear la orden
       const order = await prisma.order.create({
         data: {
-          user: { connect: { email: userEmail } }, // Conectar con el usuario por email, asumiendo que ya existe
-          totalAmount: amountTotal / 100, // convertir a euros
-          status: 'paid',
-        },
-      });
+          user: { connect: { id: user.id } },
+          totalAmount: amountTotal / 100,
+          status: 'paid'
+        }
+      })
+      console.log('🧾 Orden creada')
 
-      // Crear el pago relacionado a la orden
       await prisma.payment.create({
         data: {
           order: { connect: { id: order.id } },
           stripePaymentId,
-          paymentStatus: 'paid',
-        },
-      });
+          checkoutSessionId: sessionId,
+          paymentStatus: 'paid'
+        }
+      })
+      console.log('💳 Pago registrado')
 
-      // Crear el ticket
-      await prisma.ticket.create({
-        data: {
-          user: { connect: { email: userEmail } },
-          event: { connect: { id: parseInt(eventId) } },
-          ticketType: 'entrada', 
-        },
-      });
-    } catch (dbError) {
-      // Maneja errores de la base de datos
-      console.error('Error al guardar la compra en la base de datos:', dbError);
-      throw createError({ statusCode: 500, message: 'Error al procesar la compra' });
+      const ticketsToCreate = Array.from({ length: quantity }).map(() => ({
+        user: { connect: { id: user.id } },
+        event: { connect: { id: parseInt(eventId) } },
+        order: { connect: { id: order.id } },
+        qr: `$${Date.now()}${Math.random().toString(36).substring(2, 12)}`
+      }))
+
+      await Promise.all(
+        ticketsToCreate.map((ticket) =>
+          prisma.ticket.create({ data: ticket })
+        )
+      )
+      console.log(`🎫 ${quantity} ticket(s) generados para ${userEmail}`)
+
+      console.log('✅ Todo guardado con éxito para', userEmail)
+
+    } catch (err) {
+      console.error('❌ Error al guardar en base de datos:', err)
+      throw createError({ statusCode: 500, message: 'Error interno al procesar el pago' })
     }
+  } else {
+    console.log(`ℹ️ Webhook recibido (${type}) - sin acción`)
   }
 
-  return { received: true };
-});
+  return { received: true }
+})
