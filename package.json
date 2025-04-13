@@ -10,23 +10,24 @@
     "postinstall": "nuxt prepare"
   },
   "dependencies": {
-    "nuxt": "^3.16.1",
     "@pinia/nuxt": "^0.10.1",
-    "pinia-plugin-persistedstate": "^4.2.0",
-    "@primevue/forms": "^4.3.2",
-    "primevue": "^4.3.2",
-    "primeicons": "^7.0.0",
     "@primeuix/themes": "^1.0.0",
+    "@primevue/forms": "^4.3.2",
+    "@prisma/client": "^6.5.0",
     "@stripe/stripe-js": "^6.1.0",
-    "stripe": "^17.7.0",
     "firebase": "^11.5.0",
     "mysql2": "^3.13.0",
     "nodemailer": "^6.10.0",
+    "nuxt": "^3.16.1",
     "pdfkit": "^0.16.0",
+    "pinia-plugin-persistedstate": "^4.2.0",
+    "primeicons": "^7.0.0",
+    "primevue": "^4.3.2",
     "qrcode": "^1.5.4",
+    "qrcode.vue": "^3.6.0",
+    "stripe": "^17.7.0",
     "vue": "^3.5.13",
-    "vue-router": "^4.5.0",
-    "@prisma/client": "^6.5.0"
+    "vue-router": "^4.5.0"
   },
   "devDependencies": {
     "@nuxtjs/tailwindcss": "^6.13.2",
@@ -34,7 +35,7 @@
     "@types/node": "^22.13.10",
     "autoprefixer": "^10.4.21",
     "postcss": "^8.5.3",
-    "tailwindcss": "^3.4.17",
-    "prisma": "^6.5.0"
+    "prisma": "^6.5.0",
+    "tailwindcss": "^3.4.17"
   }
 }
