@@ -6,7 +6,6 @@ import { useUserStore } from '@/stores/user'
 
 const email = ref('')
 const password = ref('')
-
 const userStore = useUserStore()
 const { $auth } = useNuxtApp()
 const router = useRouter()
@@ -14,15 +13,22 @@ const router = useRouter()
 const loginUser = async () => {
   try {
     const result = await signInWithEmailAndPassword($auth, email.value, password.value)
-    
-    // Actualiza la tienda de usuario con los datos obtenidos
-    userStore.setUser({
-      uid: result.user.uid,
-      email: result.user.email,
-      displayName: result.user.displayName,
-      photoURL: result.user.photoURL
+
+    const { uid, email: userEmail, displayName, photoURL } = result.user
+
+    const { user } = await $fetch('/api/auth/sync-user', {
+      method: 'POST',
+      body: { uid, email: userEmail, displayName }
     })
-    
+
+    userStore.setUser({
+      firebaseUid: uid,
+      email: userEmail,
+      displayName,
+      photoURL,
+      role: user.role.name 
+    })
+
     router.push('/')
   } catch (error) {
     console.error('Error al iniciar sesión:', error.message)
@@ -35,21 +41,27 @@ const googleSignIn = async () => {
     const provider = new GoogleAuthProvider()
     const result = await signInWithPopup($auth, provider)
 
-    const { uid, email, displayName, photoURL } = result.user
+    const { uid, email: userEmail, displayName, photoURL } = result.user
 
-    await $fetch('/api/auth/sync-user', {
+    const { user } = await $fetch('/api/auth/sync-user', {
       method: 'POST',
-      body: { uid, email, displayName }
+      body: { uid, email: userEmail, displayName }
     })
 
-    userStore.setUser({ uid, email, displayName, photoURL })
+    userStore.setUser({
+      firebaseUid: uid,
+      email: userEmail,
+      displayName,
+      photoURL,
+      role: user.role.name
+    })
+
     router.push('/')
   } catch (error) {
     console.error('Error al iniciar sesión con Google:', error.message)
     alert(error.message)
   }
 }
-
 </script>
 
 <template>
@@ -60,13 +72,13 @@ const googleSignIn = async () => {
         <div class="mt-5 space-y-2">
           <p>
             ¿No tienes una cuenta?
-            <RouterLink to="/register" class="font-medium text-slate-700 hover:text-slate-900 cursor-pointer">
+            <RouterLink to="/register" class="font-medium text-slate-700 hover:text-slate-900">
               Regístrate
             </RouterLink>
           </p>
         </div>
       </div>
-      
+
       <div class="bg-slate-100 shadow p-4 py-6 space-y-8 sm:p-6 sm:rounded-lg w-full">
         <div class="grid grid-cols-3 gap-x-3 w-full">
           <button
@@ -83,17 +95,17 @@ const googleSignIn = async () => {
             O continua con
           </p>
         </div>
-        
+
         <!-- FORMULARIO DE LOGIN -->
         <form @submit.prevent="loginUser" class="space-y-5">
           <div>
             <label class="font-medium">Email</label>
-            <input v-model="email" type="email" required
+            <input v-model="email" type="email" autocomplete="email" required
                    class="w-full mt-2 px-3 py-2 text-slate-500 bg-transparent outline-none border border-slate-300 focus:border-slate-600 shadow-sm rounded-lg" />
           </div>
           <div>
             <label class="font-medium">Contraseña</label>
-            <input v-model="password" type="password" required
+            <input v-model="password" type="password" autocomplete="current-password" required
                    class="w-full mt-2 px-3 py-2 text-slate-500 bg-transparent outline-none border border-slate-300 focus:border-slate-600 shadow-sm rounded-lg" />
           </div>
           <button type="submit"
@@ -102,6 +114,7 @@ const googleSignIn = async () => {
           </button>
         </form>
       </div>
+
       <div class="text-center">
         <a href="javascript:void(0)" class="hover:text-slate-700">¿Has olvidado la contraseña?</a>
       </div>

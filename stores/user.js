@@ -1,3 +1,5 @@
+// stores/user.js
+
 export const useUserStore = defineStore('user', {
   state: () => ({
     user: null,
@@ -5,6 +7,11 @@ export const useUserStore = defineStore('user', {
   }),
   actions: {
     setUser(userData) {
+      if (!userData.role) {
+        console.warn('⚠️ El usuario no tiene rol definido, esto puede romper el middleware.')
+      }
+
+      console.log('✅ Guardando usuario en store:', userData)
       this.user = userData
       this.isReady = true
     },
@@ -14,7 +21,8 @@ export const useUserStore = defineStore('user', {
     }
   },
   getters: {
-    isLoggedIn: (state) => !!state.user
+    isLoggedIn: (state) => !!state.user,
+    isPromoter: (state) => state.user?.role === 'Promoter'
   },
   persist: true
 })

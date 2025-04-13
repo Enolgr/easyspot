@@ -1,5 +1,3 @@
-// plugins/firebase.client.js
-
 import { initializeApp } from 'firebase/app'
 import { getAuth, onAuthStateChanged } from 'firebase/auth'
 import { useUserStore } from '@/stores/user'
@@ -24,17 +22,25 @@ export default defineNuxtPlugin(() => {
       if (firebaseUser) {
         const { email, uid, displayName, photoURL } = firebaseUser
 
-        // Sincronizar con base de datos
         try {
-          await $fetch('/api/auth/sync-user', {
+          const response = await $fetch('/api/auth/sync-user', {
             method: 'POST',
             body: { email, uid, displayName }
           })
+
+          userStore.setUser({
+            firebaseUid: uid,
+            email,
+            displayName,
+            photoURL,
+            role: response.user?.role?.name
+          })
+
         } catch (err) {
-          console.error('Error sincronizando con la base de datos:', err)
+          console.error('❌ Error sincronizando con la base de datos:', err)
+          userStore.clearUser()
         }
 
-        userStore.setUser({ uid, email, displayName, photoURL })
       } else {
         userStore.clearUser()
       }

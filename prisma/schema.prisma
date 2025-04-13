@@ -8,14 +8,26 @@ datasource db {
 }
 
 model User {
-  id          Int      @id @default(autoincrement())
-  firebaseUid String   @unique
-  email       String   @unique
+  id          Int        @id @default(autoincrement())
+  firebaseUid String     @unique
+  email       String     @unique
   displayName String?
-  createdAt   DateTime @default(now())
-  promoter    Boolean  @default(false)
+  createdAt   DateTime   @default(now())
+  promoter    Boolean    @default(false)
+  roleId      Int?
   orders      Order[]
+  promoters   Promoter[]
   tickets     Ticket[]
+  role        Role?      @relation(fields: [roleId], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "FK_User_Role")
+
+  @@index([roleId], map: "FK_User_Role")
+}
+
+model Role {
+  id        Int        @id @default(autoincrement())
+  name      String     @unique(map: "name") @db.VarChar(255)
+  promoters Promoter[]
+  users     User[]
 }
 
 model Venue {
@@ -29,16 +41,17 @@ model Venue {
 }
 
 model Event {
-  id               Int      @id @default(autoincrement())
+  id               Int        @id @default(autoincrement())
   title            String
   venueId          Int?
   dateTime         DateTime
   city             String
-  price            Decimal  @db.Decimal(10, 2)
+  price            Decimal    @db.Decimal(10, 2)
   availableTickets Int
-  description      String?  @db.Text
-  poster           String?  @db.Text
-  venue            Venue?   @relation(fields: [venueId], references: [id])
+  description      String?    @db.Text
+  poster           String?    @db.Text
+  venue            Venue?     @relation(fields: [venueId], references: [id])
+  promoters        Promoter[]
   tickets          Ticket[]
 
   @@index([venueId], map: "Event_venueId_fkey")
@@ -84,4 +97,18 @@ model Payment {
   order             Order  @relation(fields: [orderId], references: [id])
 
   @@index([orderId], map: "Payment_orderId_fkey")
+}
+
+model Promoter {
+  id      Int   @id @default(autoincrement())
+  userId  Int
+  eventId Int
+  roleId  Int
+  user    User  @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "promoter_ibfk_1")
+  event   Event @relation(fields: [eventId], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "promoter_ibfk_2")
+  role    Role  @relation(fields: [roleId], references: [id], onUpdate: Restrict, map: "promoter_ibfk_3")
+
+  @@unique([userId, eventId], map: "uniq_user_event")
+  @@index([eventId], map: "eventId")
+  @@index([roleId], map: "roleId")
 }

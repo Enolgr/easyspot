@@ -43,11 +43,19 @@ onMounted(async () => {
     isLoaded.value = true
   }, 500)
 
-  if (userStore.user?.uid) {
+  console.log('🔥 UID:', userStore.user?.firebaseUid)
+
+  if (userStore.user?.firebaseUid) {
     try {
       const res = await $fetch('/api/events/my-events', {
-        query: { firebaseUid: userStore.user.uid }
+        query: { firebaseUid: userStore.user.firebaseUid }
       })
+
+      console.log('✅ API response:', res)
+
+      if (!res.events || res.events.length === 0) {
+        console.warn('⚠️ No se encontraron eventos')
+      }
 
       const grouped = {}
       for (const ticket of res.events) {
@@ -65,9 +73,12 @@ onMounted(async () => {
         })
       }
       groupedEvents.value = grouped
+      console.log('🧾 Agrupados:', grouped)
     } catch (err) {
-      console.error('Error al cargar eventos:', err)
+      console.error('❌ Error al cargar eventos:', err)
     }
+  } else {
+    console.warn('⛔ No hay UID disponible aún')
   }
 })
 
