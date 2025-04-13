@@ -11,7 +11,7 @@ definePageMeta({
 
 const isLoaded = ref(false)
 const showImageOptions = ref(false)
-const placeholder = '/placeholder.svg?height=150&width=150'
+const placeholder = 'https://www.gravatar.com/avatar/?d=mp&s=150'
 const userStore = useUserStore()
 const router = useRouter()
 const { $auth } = useNuxtApp()
@@ -25,6 +25,8 @@ const selectedQR = ref('')
 watch(
   () => userStore.user,
   (newUser) => {
+    console.log('🔥 Usuario detectado:', newUser)
+
     if (newUser) {
       userName.value = newUser.displayName || 'Usuario EasySpot'
       profileImage.value = newUser.photoURL || placeholder
