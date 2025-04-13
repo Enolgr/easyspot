@@ -61,33 +61,43 @@ const logout = async () => {
       </button>
 
       <transition 
-        name="dropdown"
-        enter-active-class="transition ease-out duration-200"
-        enter-from-class="transform opacity-0 scale-95"
-        enter-to-class="transform opacity-100 scale-100"
-        leave-active-class="transition ease-in duration-150"
-        leave-from-class="transform opacity-100 scale-100"
-        leave-to-class="transform opacity-0 scale-95"
-      >
-        <div 
-          v-show="isOpen" 
-          class="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-md shadow-lg py-1 z-10 origin-top-right"
-        >
-          <RouterLink 
-            to="/profile" 
-            class="block px-4 py-2 text-sm text-black hover:bg-gray-100"
-          >
-            Mi Perfil
-          </RouterLink>
-          <a 
-            href="#"
-            @click.prevent="logout"
-            class="block px-4 py-2 text-sm text-black hover:bg-gray-100"
-          >
-            Cerrar Sesión
-          </a>
-        </div>
-      </transition>
+  name="dropdown"
+  enter-active-class="transition ease-out duration-200"
+  enter-from-class="transform opacity-0 scale-95"
+  enter-to-class="transform opacity-100 scale-100"
+  leave-active-class="transition ease-in duration-150"
+  leave-from-class="transform opacity-100 scale-100"
+  leave-to-class="transform opacity-0 scale-95"
+>
+  <div 
+    v-show="isOpen" 
+    class="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-md shadow-lg py-1 z-10 origin-top-right"
+  >
+    <RouterLink 
+      to="/profile" 
+      class="block px-4 py-2 text-sm text-black hover:bg-gray-100"
+    >
+      Mi Perfil
+    </RouterLink>
+
+    <RouterLink
+      v-if="userStore.user?.role === 'Promoter'"
+      to="/panel"
+      class="block px-4 py-2 text-sm text-black hover:bg-gray-100"
+    >
+      Dashboard
+    </RouterLink>
+
+    <a 
+      href="#"
+      @click.prevent="logout"
+      class="block px-4 py-2 text-sm text-black hover:bg-gray-100"
+    >
+      Cerrar Sesión
+    </a>
+  </div>
+</transition>
+
     </template>
 
     <template v-else>

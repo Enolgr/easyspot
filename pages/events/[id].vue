@@ -3,7 +3,7 @@ import { ref, computed } from 'vue';
 import { loadStripe } from '@stripe/stripe-js';
 import { useRuntimeConfig } from '#app';
 import { useRouter, useRoute } from 'vue-router';
-import { useUserStore } from '@/stores/user';
+import { useUserStore, } from '@/stores/user';
 
 const route = useRoute();
 const { id } = route.params;
@@ -57,12 +57,12 @@ async function handleCheckout() {
     return
   }
 
-  const { email, uid } = userStore.user
+  const { email, firebaseUid } = userStore.user
 
-  if (!email || !uid) {
-    console.error('Faltan email o uid del usuario')
-    return
-  }
+  if (!email || !firebaseUid) {
+  console.error('Faltan email o firebaseUid del usuario')
+  return
+}
 
   try {
     const response = await $fetch('/api/stripe-checkout', {
@@ -71,7 +71,7 @@ async function handleCheckout() {
         eventId: id,
         quantity: ticketQuantity.value,
         userEmail: email,
-        firebaseUid: uid
+        firebaseUid: firebaseUid
       }
     })
 

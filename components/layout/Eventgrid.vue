@@ -15,7 +15,7 @@ watch(currentPage, () => {
 
 <template>
   <div v-if="pending" class="flex justify-center items-center h-50">
-    <span class="loader"></span>
+    <i class="pi pi-spin pi-spinner text-slate-600 text-4xl"></i>
   </div>
 
   <div v-else class="w-full max-w-[1200px] mx-auto mt-5 p-5">

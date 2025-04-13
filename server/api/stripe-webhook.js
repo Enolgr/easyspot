@@ -38,8 +38,8 @@ export default defineEventHandler(async (event) => {
     const stripePaymentId = session.payment_intent
     const sessionId = session.id
     const amountTotal = session.amount_total
-    const userEmail = session.customer_details?.email
-    const firebaseUid = session.metadata?.firebaseUid || 'unknown'
+    const firebaseUid = session.metadata?.firebaseUid
+    const userEmail = session.metadata?.userEmail
 
     console.log('📨 Datos recibidos:', {
       eventId,
@@ -51,18 +51,18 @@ export default defineEventHandler(async (event) => {
       firebaseUid
     })
 
-    if (!eventId || !userEmail || !amountTotal) {
+    if (!eventId || !firebaseUid || !amountTotal) {
       console.error('⚠️ Webhook incompleto - Faltan datos')
       return
     }
 
     try {
       const user = await prisma.user.upsert({
-        where: { email: userEmail },
-        update: {},
+        where: { firebaseUid },
+        update: { email: userEmail },
         create: {
-          email: userEmail,
-          firebaseUid
+          firebaseUid,
+          email: userEmail
         }
       })
       console.log('👤 Usuario verificado/creado')
