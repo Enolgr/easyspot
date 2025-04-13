@@ -13,6 +13,7 @@ model User {
   email       String   @unique
   displayName String?
   createdAt   DateTime @default(now())
+  promoter    Boolean  @default(false)
   orders      Order[]
   tickets     Ticket[]
 }
@@ -44,15 +45,17 @@ model Event {
 }
 
 model Ticket {
-  id           Int      @id @default(autoincrement())
+  id           Int       @id @default(autoincrement())
   userId       Int?
   eventId      Int?
-  purchaseDate DateTime @default(now())
-  qr           String   @unique
+  purchaseDate DateTime  @default(now())
+  qr           String    @unique
   orderId      Int?
-  event        Event?   @relation(fields: [eventId], references: [id])
-  order        Order?   @relation(fields: [orderId], references: [id])
-  user         User?    @relation(fields: [userId], references: [id])
+  validate     Boolean   @default(false)
+  validatedAt  DateTime? @db.DateTime(0)
+  event        Event?    @relation(fields: [eventId], references: [id])
+  order        Order?    @relation(fields: [orderId], references: [id])
+  user         User?     @relation(fields: [userId], references: [id])
 
   @@index([eventId], map: "Ticket_eventId_fkey")
   @@index([orderId], map: "Ticket_orderId_fkey")
@@ -73,10 +76,12 @@ model Order {
 }
 
 model Payment {
-  id                Int     @id @default(autoincrement())
-  stripePaymentId   String
-  checkoutSessionId String  @unique
-  paymentStatus     String
-  order             Order   @relation(fields: [orderId], references: [id])
+  id                Int    @id @default(autoincrement())
   orderId           Int
+  stripePaymentId   String
+  paymentStatus     String
+  checkoutSessionId String @unique
+  order             Order  @relation(fields: [orderId], references: [id])
+
+  @@index([orderId], map: "Payment_orderId_fkey")
 }

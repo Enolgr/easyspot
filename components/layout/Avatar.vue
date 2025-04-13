@@ -79,12 +79,6 @@ const logout = async () => {
           >
             Mi Perfil
           </RouterLink>
-          <RouterLink 
-            to="/tickets"
-            class="block px-4 py-2 text-sm text-black hover:bg-gray-100"
-          >
-            Mis Entradas
-          </RouterLink>
           <a 
             href="#"
             @click.prevent="logout"

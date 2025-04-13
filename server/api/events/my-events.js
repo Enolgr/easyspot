@@ -39,6 +39,8 @@ export default defineEventHandler(async (event) => {
       ticketId: ticket.id,
       qr: ticket.qr,
       purchaseDate: ticket.purchaseDate,
+      validate: ticket.validate,
+      validatedAt: ticket.validatedAt,
       orderId: ticket.orderId,
       event: {
         id: ticket.event.id,
