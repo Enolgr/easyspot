@@ -50,6 +50,7 @@ model Event {
   availableTickets Int
   description      String?    @db.Text
   poster           String?    @db.Text
+  category         String?
   venue            Venue?     @relation(fields: [venueId], references: [id])
   promoters        Promoter[]
   tickets          Ticket[]

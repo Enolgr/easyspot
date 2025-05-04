@@ -20,7 +20,7 @@ watch(currentPage, () => {
 
   <div v-else class="w-full max-w-[1200px] mx-auto mt-5 p-5">
     <h2 class="text-left text-3xl font-semibold text-gray-900 mb-6">
-    Todos los eventos
+      Todos los eventos
     </h2>
     <!-- Mostramos los eventos en una grilla adaptable -->
     <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
@@ -32,7 +32,7 @@ watch(currentPage, () => {
     </div>
 
     <!-- Controles de paginación -->
-    <div class="flex justify-center mt-6">
+    <div v-if="data?.pagination" class="flex justify-center mt-6">
       <button 
         @click="currentPage--" 
         :disabled="currentPage <= 1"
