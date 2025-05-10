@@ -21,6 +21,9 @@ const selectedEvent = ref(null)
 const isCreatingEvent = ref(false)
 const isLoading = ref(true)
 const searchQuery = ref('')
+const formError = ref('')
+const formSuccess = ref('')
+
 
 const stats = ref({
   totalEvents: 0,
@@ -42,6 +45,7 @@ const eventForm = ref({
   time: '',
   venue: '',
   newVenue: '',
+  venueAddress: '', // Añadido address
   venueCapacity: '',
   city: '',
   price: '',
@@ -76,9 +80,7 @@ const loadData = async () => {
     venues.value = venueData.value || []
 
     const { data, error } = await useFetch('/api/dashboard/admin-events', {
-      headers: {
-        Authorization: `Bearer ${token}`
-      }
+      headers: { Authorization: `Bearer ${token}` }
     })
 
     if (error.value) throw new Error(error.value.message)
@@ -108,6 +110,8 @@ const loadData = async () => {
 }
 
 const saveEvent = async () => {
+  formError.value = ''
+  formSuccess.value = ''
   try {
     const auth = getAuth()
     const token = await auth.currentUser.getIdToken()
@@ -128,6 +132,7 @@ const saveEvent = async () => {
       formData.append('venueName', eventForm.value.newVenue)
       formData.append('venueCity', eventForm.value.city)
       formData.append('venueCapacity', eventForm.value.venueCapacity || '10000')
+      formData.append('venueAddress', eventForm.value.venueAddress || '')
     }
 
     if (eventForm.value.poster) {
@@ -148,12 +153,12 @@ const saveEvent = async () => {
     }
 
     await loadData()
-    alert('Evento creado correctamente')
+    formSuccess.value = 'Evento creado correctamente'
     activeSection.value = 'events'
     isCreatingEvent.value = false
   } catch (error) {
     console.error('Error al guardar evento:', error)
-    alert(error.message || 'Error al guardar el evento')
+    formError.value = error.message || 'Error al guardar el evento'
   }
 }
 
@@ -166,6 +171,7 @@ const createEvent = () => {
     time: '',
     venue: '',
     newVenue: '',
+    venueAddress: '', // Reset address
     venueCapacity: '',
     city: '',
     price: '',
@@ -178,7 +184,7 @@ const createEvent = () => {
 }
 
 const editEvent = (event) => {
-  eventForm.value = { ...event, venue: event.venueId || '', newVenue: '', venueCapacity: '', poster: null }
+  eventForm.value = { ...event, venue: event.venueId || '', newVenue: '', venueAddress: '', venueCapacity: '', poster: null }
   isCreatingEvent.value = false
   activeSection.value = 'eventForm'
 }
@@ -195,13 +201,17 @@ const deleteEvent = (eventId) => {
   }
 }
 
-const formatDate = (dateString) => {
-  return new Date(dateString).toLocaleDateString('es-ES', {
+const formatDate = (dateTimeString) => {
+  const date = new Date(dateTimeString)
+  return date.toLocaleString('es-ES', {
     year: 'numeric',
-    month: 'long',
-    day: 'numeric'
-  })
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit'
+  }).replace(',', '')
 }
+
 
 const formatCurrency = (value) => {
   return new Intl.NumberFormat('es-ES', {
@@ -220,14 +230,18 @@ const filteredEvents = computed(() => {
       event.city.toLowerCase().includes(query)
     )
   }
+  
+  // Añadir estado pasado/futuro
+  const now = new Date()
+  result.forEach(event => {
+    event.isPast = new Date(event.dateTime) < now
+  })
+
   return result
 })
 
-const toggleSidebar = () => {
-  sidebarCollapsed.value = !sidebarCollapsed.value
-}
-</script>
 
+</script>
 
 
 <template>
@@ -241,6 +255,22 @@ const toggleSidebar = () => {
       </header>
 
       <main class="p-6 space-y-8">
+        <section class="grid grid-cols-1 md:grid-cols-2 gap-6">
+  <!-- Gráfica Izquierda -->
+  <div class="bg-white p-6 rounded-md shadow">
+    <h3 class="text-lg font-semibold mb-4">Ventas de Entradas</h3>
+    <div class="h-48 flex items-center justify-center text-gray-400">
+      (Aquí irá la gráfica 📈)
+    </div>
+  </div>
+
+  <!-- Box Derecha -->
+  <div class="bg-white p-6 rounded-md shadow flex flex-col items-center justify-center">
+    <h3 class="text-lg font-semibold mb-2">Total Ingresos</h3>
+    <p class="text-3xl font-bold text-slate-700">{{ formatCurrency(stats.totalRevenue) }}</p>
+  </div>
+</section>
+
         <section>
           <h2 class="text-lg font-semibold mb-4">Tus eventos</h2>
 
@@ -251,6 +281,8 @@ const toggleSidebar = () => {
           <div v-else-if="filteredEvents.length === 0" class="text-gray-500">
             No tienes eventos creados.
           </div>
+
+          
 
           <table v-else class="min-w-full bg-white shadow border rounded-md overflow-hidden">
             <thead class="bg-gray-100 text-left text-sm font-medium">
@@ -267,11 +299,10 @@ const toggleSidebar = () => {
               <tr v-for="event in filteredEvents" :key="event.id" class="border-t text-sm">
                 <td class="px-4 py-2">{{ event.title }}</td>
                 <td class="px-4 py-2">{{ event.city }}</td>
-                <td class="px-4 py-2">{{ formatDate(event.date) }}</td>
+                <td class="px-4 py-2">{{ formatDate(event.dateTime) }}</td>
                 <td class="px-4 py-2">{{ event.ticketsSold }} / {{ event.totalTickets }}</td>
                 <td class="px-4 py-2">{{ formatCurrency(event.revenue) }}</td>
                 <td class="px-4 py-2 text-right space-x-2">
-                  <button @click="editEvent(event)" class="text-blue-600 hover:underline">Editar</button>
                   <button @click="deleteEvent(event.id)" class="text-red-600 hover:underline">Eliminar</button>
                 </td>
               </tr>
@@ -281,6 +312,13 @@ const toggleSidebar = () => {
 
         <Modal :is-open="isCreatingEvent" title="Crear Evento" @close="isCreatingEvent = false">
           <form @submit.prevent="saveEvent" class="space-y-4">
+            <div v-if="formError" class="text-red-600 bg-red-100 p-2 rounded-md">
+              {{ formError }}
+            </div>
+            <div v-if="formSuccess" class="text-green-700 bg-green-100 p-2 rounded-md">
+              {{ formSuccess }}
+            </div>
+
             <input type="text" v-model="eventForm.title" placeholder="Título" required class="input" />
             <textarea v-model="eventForm.description" placeholder="Descripción" required class="input"></textarea>
             <div class="grid grid-cols-2 gap-4">
@@ -294,13 +332,19 @@ const toggleSidebar = () => {
                 {{ venue.name }} - {{ venue.city }}
               </option>
             </select>
+
             <div v-if="!eventForm.venue" class="space-y-2">
               <input type="text" v-model="eventForm.newVenue" placeholder="Nuevo recinto" class="input" />
-              <input type="number" v-model="eventForm.venueCapacity" placeholder="Capacidad del recinto" class="input" />
+              <input type="text" v-model="eventForm.venueAddress" placeholder="Dirección del recinto" class="input" />
+              <!-- AÑADIDO -->
+              <input type="number" v-model="eventForm.venueCapacity" placeholder="Capacidad del recinto"
+                class="input" />
             </div>
+
             <div class="grid grid-cols-2 gap-4">
               <input type="number" v-model="eventForm.price" placeholder="Precio (€)" required class="input" />
-              <input type="number" v-model="eventForm.totalTickets" placeholder="Total entradas" required class="input" />
+              <input type="number" v-model="eventForm.totalTickets" placeholder="Total entradas" required
+                class="input" />
             </div>
             <select v-model="eventForm.category" class="input">
               <option value="">Selecciona categoría</option>
@@ -315,6 +359,7 @@ const toggleSidebar = () => {
             </div>
           </form>
         </Modal>
+
       </main>
     </div>
   </div>

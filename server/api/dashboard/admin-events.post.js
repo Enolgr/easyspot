@@ -34,20 +34,9 @@ export default defineEventHandler(async (event) => {
     }
   }
 
-  console.log('▶️ Campos del formulario:', fields)
-  console.log('📂 Archivo recibido:', fileName)
-  console.log('🧪 Buffer?', !!fileBuffer, 'Tipo:', fileType)
-
   let posterUrl = null
   if (fileBuffer && fileType) {
-    try {
-      posterUrl = await uploadPoster(fileBuffer, fileType, fileName)
-      console.log('✅ Imagen subida:', posterUrl)
-    } catch (error) {
-      console.error('❌ Error al subir la imagen a Firebase:', error)
-    }
-  } else {
-    console.warn('⚠️ No se recibió archivo válido para subir.')
+    posterUrl = await uploadPoster(fileBuffer, fileType, fileName)
   }
 
   let venueId = fields.venueId ? parseInt(fields.venueId) : null
@@ -57,6 +46,7 @@ export default defineEventHandler(async (event) => {
       data: {
         name: fields.venueName,
         city: fields.venueCity,
+        address: fields.venueAddress || '',
         capacity: parseInt(fields.venueCapacity || '10000')
       }
     })
@@ -83,6 +73,5 @@ export default defineEventHandler(async (event) => {
     }
   })
 
-  console.log('🎉 Evento creado:', created)
   return created
 })
