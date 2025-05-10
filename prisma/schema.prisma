@@ -67,9 +67,9 @@ model Ticket {
   orderId      Int?
   validate     Boolean   @default(false)
   validatedAt  DateTime? @db.DateTime(0)
-  event        Event?    @relation(fields: [eventId], references: [id])
-  order        Order?    @relation(fields: [orderId], references: [id])
-  user         User?     @relation(fields: [userId], references: [id])
+  event        Event?    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  order        Order?    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  user         User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([eventId], map: "Ticket_eventId_fkey")
   @@index([orderId], map: "Ticket_orderId_fkey")
