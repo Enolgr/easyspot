@@ -1,7 +1,12 @@
 <script setup>
 import { useRouter } from 'vue-router'
+import { onMounted } from 'vue'
 
-const router = useRouter()
+let router = null;
+
+onMounted(() => {
+  router = useRouter()
+})
 
 defineProps({
   event: {
@@ -30,11 +35,11 @@ const goToEvent = (id) => {
     class="card w-full flex flex-row bg-white rounded-xl overflow-hidden cursor-pointer transition-transform duration-300 hover:scale-102 sm:hover:scale-105 sm:w-72 sm:flex-col sm:rounded-2xl border border-gray-200"
     @click="goToEvent(event.id)"
   >
-    <div class="relative w-1/3 sm:w-full">
+    <div class="relative w-1/3 h-24 sm:w-full sm:h-56">
       <img 
         :src="event.poster" 
         :alt="event.title" 
-        class="w-full h-full object-cover sm:h-56"
+        class="w-full h-full object-cover"
       />
       <div class="absolute top-1 right-1 bg-white text-gray-900 rounded-lg flex flex-col items-center justify-center w-8 h-10 sm:top-2 sm:right-2 sm:w-12 sm:h-14">
         <span class="text-sm font-bold sm:text-xl">{{ formatDate(event.dateTime).day }}</span>
@@ -42,7 +47,7 @@ const goToEvent = (id) => {
       </div>
     </div>
     
-    <div class="p-2 w-2/3 flex flex-col justify-center sm:w-full sm:p-4">
+    <div class="p-2 w-2/3 flex flex-col justify-center h-24 sm:w-full sm:h-auto sm:p-4">
       <h3 class="text-sm font-bold mb-1 text-gray-800 line-clamp-2 sm:text-lg sm:mb-2">{{ event.title }}</h3>
       
       <div class="flex items-center text-gray-600 text-xs sm:text-base truncate">
@@ -64,7 +69,7 @@ const goToEvent = (id) => {
 
 .card {
   width: 100%;
-  max-width: 288px; /* 72 * 4 = 288px para sm:w-72 */
+  max-width: 640px; /* 72 * 4 = 288px para sm:w-72 */
   margin: 0 auto;
 }
 </style>
