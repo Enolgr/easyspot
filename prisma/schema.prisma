@@ -32,12 +32,19 @@ model Role {
 
 model Venue {
   id             Int     @id @default(autoincrement())
-  name           String
+  name           String   @unique
   city           String
   address        String
   capacity       Int
   contactDetails String?
   events         Event[]
+}
+
+
+model Category {
+  id     Int      @id @default(autoincrement())
+  name   String   @unique
+  events Event[]
 }
 
 model Event {
@@ -50,12 +57,14 @@ model Event {
   availableTickets Int
   description      String?    @db.Text
   poster           String?    @db.Text
-  category         String?
   venue            Venue?     @relation(fields: [venueId], references: [id])
   promoters        Promoter[]
   tickets          Ticket[]
+  categoryId       Int        @default(1)
+  category         Category   @relation(fields: [categoryId], references: [id])
 
   @@index([venueId], map: "Event_venueId_fkey")
+  @@index([categoryId], map: "Event_categoryId_fkey")
 }
 
 model Ticket {
