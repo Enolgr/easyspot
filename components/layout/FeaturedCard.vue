@@ -27,7 +27,7 @@ const goToEvent = (id) => {
 
 <template>
   <div 
-    class="card w-full flex flex-row bg-white rounded-xl overflow-hidden cursor-pointer transition-transform duration-300 hover:scale-102 sm:hover:scale-105 sm:w-72 sm:flex-col sm:rounded-2xl"
+    class="card w-full flex flex-row bg-white rounded-xl overflow-hidden cursor-pointer transition-transform duration-300 hover:scale-102 sm:hover:scale-105 sm:w-72 sm:flex-col sm:rounded-2xl border border-gray-200"
     @click="goToEvent(event.id)"
   >
     <div class="relative w-1/3 sm:w-full">

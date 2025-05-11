@@ -1,77 +1,116 @@
-import { readMultipartFormData, getHeader } from 'h3'
 import { PrismaClient } from '@prisma/client'
-import { getFirebaseAdmin } from '@/server/utils/firebase'
-import { uploadPoster } from '@/server/utils/uploadPoster.js'
+import { defineEventHandler, readMultipartFormData, getHeader } from 'h3'
+import { getAuth } from 'firebase-admin/auth'
+import { uploadPoster } from '@/server/utils/uploadPoster'
 
 const prisma = new PrismaClient()
 
 export default defineEventHandler(async (event) => {
-  const token = getHeader(event, 'authorization')?.replace('Bearer ', '')
-  if (!token) throw createError({ statusCode: 401, message: 'Token requerido' })
-
-  const firebase = getFirebaseAdmin()
-  const decoded = await firebase.auth().verifyIdToken(token)
-
-  const user = await prisma.user.findUnique({
-    where: { firebaseUid: decoded.uid }
-  })
-
-  if (!user?.promoter) throw createError({ statusCode: 403, message: 'No autorizado' })
-
-  const formData = await readMultipartFormData(event)
-  const fields = {}
-  let fileBuffer = null
-  let fileType = null
-  let fileName = null
-
-  for (const part of formData) {
-    if (part.filename) {
-      fileBuffer = Buffer.from(await part.data)
-      fileType = part.filename?.split('.').pop()
-      fileName = part.filename
-    } else {
-      fields[part.name] = part.data.toString()
+  try {
+    const formData = await readMultipartFormData(event)
+    if (!formData) {
+      throw new Error('No se recibieron datos del formulario')
     }
-  }
 
-  let posterUrl = null
-  if (fileBuffer && fileType) {
-    posterUrl = await uploadPoster(fileBuffer, fileType, fileName)
-  }
+    // Obtener el token del header
+    const authHeader = getHeader(event, 'Authorization')
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      throw new Error('No se proporcionó token de autenticación')
+    }
 
-  let venueId = fields.venueId ? parseInt(fields.venueId) : null
-
-  if (!venueId && fields.venueName && fields.venueCity) {
-    const newVenue = await prisma.venue.create({
-      data: {
-        name: fields.venueName,
-        city: fields.venueCity,
-        address: fields.venueAddress || '',
-        capacity: parseInt(fields.venueCapacity || '10000')
-      }
+    const token = authHeader.split(' ')[1]
+    const decodedToken = await getAuth().verifyIdToken(token)
+    const user = await prisma.user.findUnique({
+      where: { firebaseUid: decodedToken.uid },
+      include: { role: true }
     })
-    venueId = newVenue.id
-  }
 
-  const created = await prisma.event.create({
-    data: {
-      title: fields.title,
-      description: fields.description,
-      city: fields.city,
-      dateTime: new Date(`${fields.date}T${fields.time}`),
-      price: parseFloat(fields.price),
-      availableTickets: parseInt(fields.totalTickets),
-      category: fields.category || null,
-      poster: posterUrl,
-      venue: { connect: { id: venueId } },
-      promoters: {
-        create: {
-          user: { connect: { id: user.id } },
-          role: { connect: { id: 2 } }
+    if (!user || user.role.name !== 'Promoter') {
+      throw new Error('No tienes permisos para crear eventos')
+    }
+
+    // Extraer datos del formulario
+    const title = formData.find(f => f.name === 'title')?.data.toString()
+    const description = formData.find(f => f.name === 'description')?.data.toString()
+    const date = formData.find(f => f.name === 'date')?.data.toString()
+    const time = formData.find(f => f.name === 'time')?.data.toString()
+    const city = formData.find(f => f.name === 'city')?.data.toString()
+    const price = parseFloat(formData.find(f => f.name === 'price')?.data.toString())
+    const totalTickets = parseInt(formData.find(f => f.name === 'totalTickets')?.data.toString())
+    const categoryId = formData.find(f => f.name === 'categoryId')?.data.toString()
+    const venueId = formData.find(f => f.name === 'venueId')?.data.toString()
+    const venueName = formData.find(f => f.name === 'venueName')?.data.toString()
+    const venueCity = formData.find(f => f.name === 'venueCity')?.data.toString()
+    const venueCapacity = formData.find(f => f.name === 'venueCapacity')?.data.toString()
+    const venueAddress = formData.find(f => f.name === 'venueAddress')?.data.toString()
+    const posterFile = formData.find(f => f.name === 'poster')
+
+    // Validar datos requeridos
+    if (!title || !description || !date || !time || !city || !price || !totalTickets) {
+      throw new Error('Faltan campos requeridos')
+    }
+
+    // Procesar fecha y hora
+    const dateTime = new Date(`${date}T${time}`)
+    if (isNaN(dateTime.getTime())) {
+      throw new Error('Fecha o hora inválida')
+    }
+
+    // Procesar recinto
+    let venue
+    if (venueId) {
+      venue = await prisma.venue.findUnique({
+        where: { id: parseInt(venueId) }
+      })
+      if (!venue) {
+        throw new Error('Recinto no encontrado')
+      }
+    } else if (venueName) {
+      venue = await prisma.venue.create({
+        data: {
+          name: venueName,
+          city: venueCity || city,
+          capacity: parseInt(venueCapacity) || 10000,
+          address: venueAddress || ''
+        }
+      })
+    } else {
+      throw new Error('Se requiere un recinto')
+    }
+
+    // Subir poster si existe
+    let posterUrl = null
+    if (posterFile) {
+      posterUrl = await uploadPoster(posterFile.data, posterFile.filename?.split('.').pop() || 'jpg', posterFile.filename)
+    }
+
+    // Crear el evento
+    const newEvent = await prisma.event.create({
+      data: {
+        title,
+        description,
+        dateTime,
+        city,
+        price,
+        availableTickets: totalTickets,
+        poster: posterUrl,
+        venueId: venue.id,
+        categoryId: categoryId || null,
+        promoters: {
+          create: {
+            userId: user.id,
+            roleId: user.roleId
+          }
         }
       }
-    }
-  })
+    })
 
-  return created
+    return newEvent
+  } catch (error) {
+    console.error('Error al crear evento:', error)
+    throw createError({
+      statusCode: 500,
+      message: error.message || 'Error al crear el evento'
+    })
+  }
 })

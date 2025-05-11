@@ -64,18 +64,22 @@ const eventForm = ref({
 })
 
 const venues = ref([])
-
-const categories = ref([
-  { id: 'music', name: 'Música' },
-  { id: 'festival', name: 'Festival' },
-  { id: 'concert', name: 'Concierto' },
-  { id: 'theater', name: 'Teatro' },
-  { id: 'comedy', name: 'Comedia' }
-])
+const categories = ref([])
 
 onMounted(async () => {
   await loadData()
+  await loadCategories()
 })
+
+const loadCategories = async () => {
+  try {
+    const { data } = await useFetch('/api/categories')
+    categories.value = data.value || []
+  } catch (error) {
+    console.error('Error al cargar categorías:', error)
+    categories.value = []
+  }
+}
 
 const loadData = async () => {
   isLoading.value = true
@@ -137,7 +141,7 @@ const saveEvent = async () => {
     formData.append('city', eventForm.value.city)
     formData.append('price', eventForm.value.price)
     formData.append('totalTickets', eventForm.value.totalTickets)
-    formData.append('category', eventForm.value.category || '')
+    formData.append('categoryId', eventForm.value.category || '')
 
     if (eventForm.value.venue) {
       formData.append('venueId', eventForm.value.venue)
@@ -293,14 +297,18 @@ const filteredEvents = computed(() => {
           <div class="flex flex-col sm:flex-row items-start sm:items-center gap-4">
             <label class="relative inline-flex items-center cursor-pointer">
               <input type="checkbox" v-model="showPastEvents" class="sr-only peer">
-              <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-slate-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-slate-600"></div>
+              <div
+                class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-slate-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-slate-600">
+              </div>
               <span class="ml-3 text-sm font-medium text-gray-700">Ver finalizados</span>
             </label>
-            <NuxtLink to="/" class="w-full sm:w-auto bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-2 rounded-md flex items-center justify-center gap-2">
+            <NuxtLink to="/"
+              class="w-full sm:w-auto bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-2 rounded-md flex items-center justify-center gap-2">
               <i class="pi pi-arrow-left"></i>
               Volver a la tienda
             </NuxtLink>
-            <button @click="createEvent" class="w-full sm:w-auto bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-md">
+            <button @click="createEvent"
+              class="w-full sm:w-auto bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-md">
               Crear Evento
             </button>
           </div>
@@ -367,67 +375,139 @@ const filteredEvents = computed(() => {
           </div>
         </section>
 
-        <Modal :is-open="isCreatingEvent" title="Crear Evento" @close="isCreatingEvent = false">
-          <form @submit.prevent="saveEvent" class="space-y-4">
-            <div v-if="formError" class="text-red-600 bg-red-100 p-2 rounded-md">
+        <Modal :is-open="isCreatingEvent" title="Crear Evento" @close="isCreatingEvent = false" class="max-w-4xl">
+          <form @submit.prevent="saveEvent" class="space-y-6">
+            <div v-if="formError" class="text-red-600 bg-red-100 p-3 rounded-md mb-4">
               {{ formError }}
             </div>
-            <div v-if="formSuccess" class="text-green-700 bg-green-100 p-2 rounded-md">
+            <div v-if="formSuccess" class="text-green-700 bg-green-100 p-3 rounded-md mb-4">
               {{ formSuccess }}
             </div>
 
-            <input type="text" v-model="eventForm.title" placeholder="Título" required class="input" />
-            <textarea v-model="eventForm.description" placeholder="Descripción" required class="input"></textarea>
-            <div class="grid grid-cols-2 gap-4">
-              <div class="relative">
-                <i class="pi pi-calendar absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
-                <input type="date" v-model="eventForm.date" required class="input pr-10" />
+            <!-- Información básica -->
+            <div class="space-y-4">
+              <h3 class="text-lg font-medium text-gray-800 border-b pb-2">Información básica</h3>
+
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Título del evento</label>
+                <input type="text" v-model="eventForm.title" placeholder="Título" required class="input h-12" />
               </div>
 
-              <div class="relative">
-                <i class="pi pi-clock absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
-                <input type="time" v-model="eventForm.time" required class="input pr-10" />
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Descripción</label>
+                <textarea v-model="eventForm.description" placeholder="Descripción" required
+                  class="input h-32 py-3"></textarea>
+              </div>
+
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Categoría</label>
+                <select v-model="eventForm.category" class="input h-12">
+                  <option value="">Selecciona categoría</option>
+                  <option v-for="category in categories" :key="category.id" :value="category.id">
+                    {{ category.name }}
+                  </option>
+                </select>
               </div>
             </div>
 
-            <input type="text" v-model="eventForm.city" placeholder="Ciudad" required class="input" />
-            <select v-model="eventForm.venue" class="input">
-              <option value="">Selecciona recinto</option>
-              <option v-for="venue in venues" :key="venue.id" :value="venue.id">
-                {{ venue.name }} - {{ venue.city }}
-              </option>
-            </select>
+            <!-- Fecha y ubicación -->
+            <div class="space-y-4">
+              <h3 class="text-lg font-medium text-gray-800 border-b pb-2">Fecha y ubicación</h3>
 
-            <div v-if="!eventForm.venue" class="space-y-2">
-              <input type="text" v-model="eventForm.newVenue" placeholder="Nuevo recinto" class="input" />
-              <input type="text" v-model="eventForm.venueAddress" placeholder="Dirección del recinto" class="input" />
+              <div class="flex flex-col md:flex-row gap-4">
+                <div class="flex-1">
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Fecha</label>
+                  <div class="relative">
+                    <i class="pi pi-calendar absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                    <input type="date" v-model="eventForm.date" required class="input h-12 pr-10" />
+                  </div>
+                </div>
 
-              <input type="number" v-model="eventForm.venueCapacity" placeholder="Capacidad del recinto"
-                class="input" />
+                <div class="flex-1">
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Hora</label>
+                  <div class="relative">
+                    <i class="pi pi-clock absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                    <input type="time" v-model="eventForm.time" required class="input h-12 pr-10" />
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Ciudad</label>
+                <input type="text" v-model="eventForm.city" placeholder="Ciudad" required class="input h-12" />
+              </div>
+
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Recinto</label>
+                <select v-model="eventForm.venue" class="input h-12">
+                  <option value="">Selecciona recinto</option>
+                  <option v-for="venue in venues" :key="venue.id" :value="venue.id">
+                    {{ venue.name }} - {{ venue.city }}
+                  </option>
+                </select>
+              </div>
             </div>
 
-            <div class="grid grid-cols-2 gap-4">
-              <input type="number" v-model="eventForm.price" placeholder="Precio (€)" required class="input" />
-              <input type="number" v-model="eventForm.totalTickets" placeholder="Total entradas" required
-                class="input" />
+            <!-- Nuevo Recinto (condicional) -->
+            <div v-if="!eventForm.venue" class="space-y-4 p-5 bg-gray-50 rounded-lg border border-gray-200">
+              <h3 class="text-base font-medium text-gray-700">Nuevo Recinto</h3>
+
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Nombre del recinto</label>
+                <input type="text" v-model="eventForm.newVenue" placeholder="Nombre del recinto" class="input h-12" />
+              </div>
+
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Dirección</label>
+                <input type="text" v-model="eventForm.venueAddress" placeholder="Dirección" class="input h-12" />
+              </div>
+
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Capacidad</label>
+                <input type="number" v-model="eventForm.venueCapacity" placeholder="Capacidad" class="input h-12" />
+              </div>
             </div>
-            <select v-model="eventForm.category" class="input">
-              <option value="">Selecciona categoría</option>
-              <option v-for="category in categories" :key="category.id" :value="category.id">
-                {{ category.name }}
-              </option>
-            </select>
-            <input type="file" @change="e => eventForm.poster = e.target.files[0]" accept="image/*" class="input" />
-            <div class="flex justify-end gap-2">
-              <button type="button" @click="isCreatingEvent = false" class="btn-secondary">Cancelar</button>
-              <button type="submit" class="btn-primary">Guardar</button>
+
+            <!-- Entradas y precios -->
+            <div class="space-y-4">
+              <h3 class="text-lg font-medium text-gray-800 border-b pb-2">Entradas y precios</h3>
+
+              <div class="flex flex-col md:flex-row gap-4">
+                <div class="flex-1">
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Precio (€)</label>
+                  <input type="number" v-model="eventForm.price" placeholder="Precio (€)" required class="input h-12" />
+                </div>
+
+                <div class="flex-1">
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Total entradas</label>
+                  <input type="number" v-model="eventForm.totalTickets" placeholder="Total entradas" required
+                    class="input h-12" />
+                </div>
+              </div>
+            </div>
+
+            <!-- Imagen del evento -->
+            <div class="space-y-4">
+              <h3 class="text-lg font-medium text-gray-800 border-b pb-2">Imagen del evento</h3>
+
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Poster del evento</label>
+                <input type="file" @change="e => eventForm.poster = e.target.files[0]" accept="image/*"
+                  class="input py-3" />
+              </div>
+            </div>
+
+            <!-- Botones de acción -->
+            <div class="flex justify-end gap-3 mt-8 pt-4 border-t">
+              <button type="button" @click="isCreatingEvent = false" class="btn-secondary py-3 px-6">Cancelar</button>
+              <button type="submit" class="btn-primary py-3 px-6">Guardar</button>
             </div>
           </form>
         </Modal>
-
         <Modal :is-open="showDeleteModal" title="Confirmar eliminación" @close="showDeleteModal = false">
           <div class="p-4">
-            <p class="text-gray-700 mb-4">¿Estás seguro de que deseas eliminar este evento? Esta acción no se puede deshacer.</p>
+            <p class="text-gray-700 mb-4">¿Estás seguro de que deseas eliminar este evento? Esta acción no se puede
+              deshacer.</p>
             <div class="flex justify-end gap-2">
               <button @click="showDeleteModal = false" class="btn-secondary">Cancelar</button>
               <button @click="confirmDelete" class="btn-primary bg-red-600 hover:bg-red-700">Eliminar</button>

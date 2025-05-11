@@ -3,7 +3,6 @@ const { data: events, pending } = useFetch('/api/popular-events')
 
 // Depuración de datos
 watch(events, (newEvents) => {
-  console.log('📊 Eventos populares:', newEvents)
 }, { immediate: true })
 </script>
 
