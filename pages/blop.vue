@@ -12,7 +12,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="gradient-bg relative h-screen overflow-hidden">
+  <div class="gradient-bg relative h-screen w-full">
     <div class="gradients-container absolute inset-0" :class="{ 'loaded': isLoaded }">
       <div class="blob blob1 bg-gradient-to-br from-[#15469F] to-[#F1C80C]"></div>
       <div class="blob blob2 bg-gradient-to-br from-[#15469F] to-[#86378E]"></div>
@@ -22,17 +22,34 @@ onMounted(() => {
 </template>
 
 <style scoped>
+:root {
+  overflow-x: hidden;
+}
+
 html, body {
   margin: 0;
   padding: 0;
-  overflow: hidden;
+  width: 100%;
+  height: 100%;
   background: #000;
+}
+
+.gradient-bg {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  max-width: 100vw;
 }
 
 .gradients-container {
   filter: blur(20px);
   opacity: 0;
-  transition: opacity 2s ease-in-out; /* Transición más lenta de 2 segundos */
+  transition: opacity 2s ease-in-out;
+  width: 100%;
+  height: 100%;
+  position: relative;
 }
 
 .gradients-container.loaded {
@@ -56,19 +73,19 @@ html, body {
 .blob1 {
   left: 10%;
   top: 15%;
-  animation: blobMove1 6s infinite alternate ease-in-out; /* Más rápido: de 8s a 6s */
+  animation: blobMove1 6s infinite alternate ease-in-out;
 }
 
 .blob2 {
   left: 65%;
   top: 20%;
-  animation: blobMove2 7s infinite alternate ease-in-out; /* Más rápido: de 10s a 7s */
+  animation: blobMove2 7s infinite alternate ease-in-out;
 }
 
 .blob3 {
   left: 35%;
   top: 70%;
-  animation: blobMove3 6.5s infinite alternate ease-in-out; /* Más rápido: de 9s a 6.5s */
+  animation: blobMove3 6.5s infinite alternate ease-in-out;
 }
 
 @keyframes blobMove1 {

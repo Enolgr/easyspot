@@ -23,7 +23,9 @@ const isLoading = ref(true)
 const searchQuery = ref('')
 const formError = ref('')
 const formSuccess = ref('')
-
+const showPastEvents = ref(false)
+const showDeleteModal = ref(false)
+const eventToDelete = ref(null)
 
 const stats = ref({
   totalEvents: 0,
@@ -37,6 +39,13 @@ const recentEvents = ref([])
 const topEvents = ref([])
 const salesData = ref([])
 
+topEvents.value = events.value.map(e => ({
+  id: e.id,
+  title: e.title,
+  ticketsSold: e.ticketsSold,
+  percentageSold: Math.round((e.ticketsSold / e.totalTickets) * 100)
+}))
+
 const eventForm = ref({
   id: null,
   title: '',
@@ -45,7 +54,7 @@ const eventForm = ref({
   time: '',
   venue: '',
   newVenue: '',
-  venueAddress: '', // Añadido address
+  venueAddress: '',
   venueCapacity: '',
   city: '',
   price: '',
@@ -88,12 +97,16 @@ const loadData = async () => {
     events.value = Array.isArray(data.value) ? data.value : []
     recentEvents.value = events.value.slice(0, 4)
 
-    topEvents.value = events.value.map(e => ({
-      id: e.id,
-      title: e.title,
-      ticketsSold: e.ticketsSold,
-      percentageSold: Math.round((e.ticketsSold / e.totalTickets) * 100)
-    }))
+    // Preparar datos para la gráfica solo con eventos próximos
+    const now = new Date()
+    topEvents.value = events.value
+      .filter(e => new Date(e.dateTime) > now)
+      .map(e => ({
+        id: e.id,
+        title: e.title,
+        ticketsSold: e.ticketsSold || 0,
+        percentageSold: Math.round(((e.ticketsSold || 0) / e.totalTickets) * 100)
+      }))
 
     stats.value = {
       totalEvents: events.value.length,
@@ -171,7 +184,7 @@ const createEvent = () => {
     time: '',
     venue: '',
     newVenue: '',
-    venueAddress: '', // Reset address
+    venueAddress: '',
     venueCapacity: '',
     city: '',
     price: '',
@@ -194,10 +207,34 @@ const viewEventDetails = (event) => {
   activeSection.value = 'eventDetails'
 }
 
-const deleteEvent = (eventId) => {
-  if (confirm('¿Estás seguro de que deseas eliminar este evento?')) {
-    events.value = events.value.filter(event => event.id !== eventId)
-    alert('Evento eliminado correctamente')
+const deleteEvent = async (eventId) => {
+  eventToDelete.value = eventId
+  showDeleteModal.value = true
+}
+
+const confirmDelete = async () => {
+  try {
+    const auth = getAuth()
+    const token = await auth.currentUser.getIdToken()
+
+    const res = await fetch(`/api/dashboard/${eventToDelete.value}`, {
+      method: 'DELETE',
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    })
+
+    if (!res.ok) {
+      const err = await res.text()
+      throw new Error(err || 'Error al eliminar el evento')
+    }
+
+    await loadData()
+    showDeleteModal.value = false
+    eventToDelete.value = null
+  } catch (error) {
+    console.error('Error al eliminar evento:', error)
+    formError.value = error.message || 'Error al eliminar el evento'
   }
 }
 
@@ -212,7 +249,6 @@ const formatDate = (dateTimeString) => {
   }).replace(',', '')
 }
 
-
 const formatCurrency = (value) => {
   return new Intl.NumberFormat('es-ES', {
     style: 'currency',
@@ -221,7 +257,9 @@ const formatCurrency = (value) => {
 }
 
 const filteredEvents = computed(() => {
-  let result = [...events.value]
+  let result = [...events.value].reverse()
+  
+  // Filtrar por búsqueda
   if (searchQuery.value) {
     const query = searchQuery.value.toLowerCase()
     result = result.filter(event => 
@@ -230,46 +268,59 @@ const filteredEvents = computed(() => {
       event.city.toLowerCase().includes(query)
     )
   }
-  
-  // Añadir estado pasado/futuro
+
+  // Filtrar por estado (finalizados/próximos)
   const now = new Date()
-  result.forEach(event => {
-    event.isPast = new Date(event.dateTime) < now
+  result = result.filter(event => {
+    const isPast = new Date(event.dateTime) < now
+    event.isPast = isPast // Asignar el estado isPast a cada evento
+    return showPastEvents.value ? isPast : !isPast
   })
 
   return result
 })
 
-
 </script>
+
 
 
 <template>
   <div class="min-h-screen bg-gray-50" v-if="canRender">
     <div class="flex flex-col">
-      <header class="bg-white shadow px-6 py-4 flex items-center justify-between">
-        <h1 class="text-xl font-bold">Panel de Promotor</h1>
-        <button @click="createEvent" class="bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-md">
-          Crear Evento
-        </button>
+      <header class="bg-white shadow px-4 sm:px-6 py-4">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <h1 class="text-xl font-bold">Panel de Promotor</h1>
+          <div class="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+            <label class="relative inline-flex items-center cursor-pointer">
+              <input type="checkbox" v-model="showPastEvents" class="sr-only peer">
+              <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-slate-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-slate-600"></div>
+              <span class="ml-3 text-sm font-medium text-gray-700">Ver finalizados</span>
+            </label>
+            <NuxtLink to="/" class="w-full sm:w-auto bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-2 rounded-md flex items-center justify-center gap-2">
+              <i class="pi pi-arrow-left"></i>
+              Volver a la tienda
+            </NuxtLink>
+            <button @click="createEvent" class="w-full sm:w-auto bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-md">
+              Crear Evento
+            </button>
+          </div>
+        </div>
       </header>
 
       <main class="p-6 space-y-8">
         <section class="grid grid-cols-1 md:grid-cols-2 gap-6">
-  <!-- Gráfica Izquierda -->
-  <div class="bg-white p-6 rounded-md shadow">
-    <h3 class="text-lg font-semibold mb-4">Ventas de Entradas</h3>
-    <div class="h-48 flex items-center justify-center text-gray-400">
-      (Aquí irá la gráfica 📈)
-    </div>
-  </div>
+          <div class="bg-white p-6 rounded-md shadow">
+            <h3 class="text-lg font-semibold mb-4">Ventas de Entradas</h3>
+            <div class="h-48 flex items-center justify-center text-gray-400">
+              <LayoutGraphic :sales-data="topEvents" />
+            </div>
+          </div>
 
-  <!-- Box Derecha -->
-  <div class="bg-white p-6 rounded-md shadow flex flex-col items-center justify-center">
-    <h3 class="text-lg font-semibold mb-2">Total Ingresos</h3>
-    <p class="text-3xl font-bold text-slate-700">{{ formatCurrency(stats.totalRevenue) }}</p>
-  </div>
-</section>
+          <div class="bg-white p-6 rounded-md shadow flex flex-col items-center justify-center">
+            <h3 class="text-lg font-semibold mb-2">Total Ingresos</h3>
+            <p class="text-3xl font-bold text-slate-700">{{ formatCurrency(stats.totalRevenue) }}</p>
+          </div>
+        </section>
 
         <section>
           <h2 class="text-lg font-semibold mb-4">Tus eventos</h2>
@@ -282,32 +333,38 @@ const filteredEvents = computed(() => {
             No tienes eventos creados.
           </div>
 
-          
-
-          <table v-else class="min-w-full bg-white shadow border rounded-md overflow-hidden">
-            <thead class="bg-gray-100 text-left text-sm font-medium">
-              <tr>
-                <th class="px-4 py-3">Título</th>
-                <th class="px-4 py-3">Ciudad</th>
-                <th class="px-4 py-3">Fecha</th>
-                <th class="px-4 py-3">Entradas</th>
-                <th class="px-4 py-3">Ingresos</th>
-                <th class="px-4 py-3 text-right">Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="event in filteredEvents" :key="event.id" class="border-t text-sm">
-                <td class="px-4 py-2">{{ event.title }}</td>
-                <td class="px-4 py-2">{{ event.city }}</td>
-                <td class="px-4 py-2">{{ formatDate(event.dateTime) }}</td>
-                <td class="px-4 py-2">{{ event.ticketsSold }} / {{ event.totalTickets }}</td>
-                <td class="px-4 py-2">{{ formatCurrency(event.revenue) }}</td>
-                <td class="px-4 py-2 text-right space-x-2">
-                  <button @click="deleteEvent(event.id)" class="text-red-600 hover:underline">Eliminar</button>
-                </td>
-              </tr>
-            </tbody>
-          </table>
+          <div class="overflow-x-auto">
+            <table class="min-w-full bg-white shadow border rounded-md">
+              <thead class="bg-gray-100 text-left text-sm font-medium">
+                <tr>
+                  <th class="px-4 py-3 whitespace-nowrap">Título</th>
+                  <th class="px-4 py-3 whitespace-nowrap">Ciudad</th>
+                  <th class="px-4 py-3 whitespace-nowrap">Estado</th>
+                  <th class="px-4 py-3 whitespace-nowrap">Fecha</th>
+                  <th class="px-4 py-3 whitespace-nowrap">Entradas</th>
+                  <th class="px-4 py-3 whitespace-nowrap">Ingresos</th>
+                  <th class="px-4 py-3 whitespace-nowrap text-right">Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="event in filteredEvents" :key="event.id" class="border-t text-sm">
+                  <td class="px-4 py-2 whitespace-nowrap">{{ event.title }}</td>
+                  <td class="px-4 py-2 whitespace-nowrap">{{ event.city }}</td>
+                  <td class="px-4 py-2 whitespace-nowrap">
+                    <span :class="event.isPast ? 'text-purple-400' : 'text-green-600'">
+                      {{ event.isPast ? 'Finalizado' : 'Próximo' }}
+                    </span>
+                  </td>
+                  <td class="px-4 py-2 whitespace-nowrap">{{ formatDate(event.dateTime) }}</td>
+                  <td class="px-4 py-2 whitespace-nowrap">{{ event.ticketsSold }} / {{ event.totalTickets }}</td>
+                  <td class="px-4 py-2 whitespace-nowrap">{{ formatCurrency(event.revenue) }}</td>
+                  <td class="px-4 py-2 whitespace-nowrap text-right">
+                    <button @click="deleteEvent(event.id)" class="text-red-600 hover:underline">Eliminar</button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </section>
 
         <Modal :is-open="isCreatingEvent" title="Crear Evento" @close="isCreatingEvent = false">
@@ -322,9 +379,17 @@ const filteredEvents = computed(() => {
             <input type="text" v-model="eventForm.title" placeholder="Título" required class="input" />
             <textarea v-model="eventForm.description" placeholder="Descripción" required class="input"></textarea>
             <div class="grid grid-cols-2 gap-4">
-              <input type="date" v-model="eventForm.date" required class="input" />
-              <input type="time" v-model="eventForm.time" required class="input" />
+              <div class="relative">
+                <i class="pi pi-calendar absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                <input type="date" v-model="eventForm.date" required class="input pr-10" />
+              </div>
+
+              <div class="relative">
+                <i class="pi pi-clock absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                <input type="time" v-model="eventForm.time" required class="input pr-10" />
+              </div>
             </div>
+
             <input type="text" v-model="eventForm.city" placeholder="Ciudad" required class="input" />
             <select v-model="eventForm.venue" class="input">
               <option value="">Selecciona recinto</option>
@@ -336,7 +401,7 @@ const filteredEvents = computed(() => {
             <div v-if="!eventForm.venue" class="space-y-2">
               <input type="text" v-model="eventForm.newVenue" placeholder="Nuevo recinto" class="input" />
               <input type="text" v-model="eventForm.venueAddress" placeholder="Dirección del recinto" class="input" />
-              <!-- AÑADIDO -->
+
               <input type="number" v-model="eventForm.venueCapacity" placeholder="Capacidad del recinto"
                 class="input" />
             </div>
@@ -358,6 +423,16 @@ const filteredEvents = computed(() => {
               <button type="submit" class="btn-primary">Guardar</button>
             </div>
           </form>
+        </Modal>
+
+        <Modal :is-open="showDeleteModal" title="Confirmar eliminación" @close="showDeleteModal = false">
+          <div class="p-4">
+            <p class="text-gray-700 mb-4">¿Estás seguro de que deseas eliminar este evento? Esta acción no se puede deshacer.</p>
+            <div class="flex justify-end gap-2">
+              <button @click="showDeleteModal = false" class="btn-secondary">Cancelar</button>
+              <button @click="confirmDelete" class="btn-primary bg-red-600 hover:bg-red-700">Eliminar</button>
+            </div>
+          </div>
         </Modal>
 
       </main>

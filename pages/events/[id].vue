@@ -197,13 +197,6 @@ async function handleCheckout() {
                   <p class="text-gray-600">{{ data.data.venue.city }}</p>
                 </div>
               </div>
-              <div class="flex items-start">
-                <i class="pi pi-envelope mr-3 text-primary text-xl mt-1"></i>
-                <div>
-                  <h4 class="font-semibold text-gray-700">Contacto</h4>
-                  <p class="text-gray-600">{{ data.data.venue.contactDetails }}</p>
-                </div>
-              </div>
             </div>
           </div>
         </div>

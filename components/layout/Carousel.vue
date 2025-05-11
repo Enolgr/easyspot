@@ -1,5 +1,10 @@
 <script setup>
-const { data: events, pending } = useFetch('/api/events')
+const { data: events, pending } = useFetch('/api/popular-events')
+
+// Depuración de datos
+watch(events, (newEvents) => {
+  console.log('📊 Eventos populares:', newEvents)
+}, { immediate: true })
 </script>
 
 <template>
@@ -11,11 +16,15 @@ const { data: events, pending } = useFetch('/api/events')
     <h2 class="text-left text-3xl font-semibold text-gray-900 mb-6">
       Eventos Populares
     </h2>
-    <div class="flex gap-4 overflow-x-auto scrollbar-hide mt-5 p-5 w-full">
+    <div v-if="!events?.data || events.data.length === 0" class="text-center text-gray-500 py-8">
+      No hay eventos populares disponibles
+    </div>
+    <div v-else class="flex flex-col md:flex-row gap-4 md:overflow-x-auto scrollbar-hide mt-5 p-5 w-full">
       <LayoutFeaturedCard 
-        v-for="event in (events?.data ? events.data.slice(0, 4) : [])" 
+        v-for="event in events.data.slice(0, 4)" 
         :key="event.id" 
         :event="event"
+        class="w-full md:w-auto mb-4 md:mb-0"
       />
     </div>
   </div>

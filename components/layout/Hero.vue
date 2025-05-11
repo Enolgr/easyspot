@@ -14,7 +14,7 @@ onMounted(() => {
 <template>
   <!-- Fondo de blobs -->
   <div class="gradient-bg absolute inset-0 flex items-center justify-center w-[100%]">
-    <div class="gradients-container absolute inset-0" :class="{ 'loaded': isLoaded }">
+    <div class="gradients-container absolute inset-0 overflow-hidden" :class="{ 'loaded': isLoaded }">
       <div class="blob blob1 bg-gradient-to-br from-[#15469F] to-[#F1C80C]"></div>
       <div class="blob blob2 bg-gradient-to-br from-[#15469F] to-[#86378E]"></div>
       <div class="blob blob3 bg-gradient-to-br from-[#86378E] to-[#F1C80C]"></div>
@@ -93,7 +93,7 @@ html, body {
     border-radius: 50%;
   }
   100% {
-    transform: translate(100px, 150px) scale(1.3);
+    transform: translate(50px, 150px) scale(1.3);
     border-radius: 40% 60% 50% 50%;
   }
 }
@@ -104,7 +104,7 @@ html, body {
     border-radius: 55% 45% 55% 45%;
   }
   100% {
-    transform: translate(-100px, -120px) scale(0.8);
+    transform: translate(-50px, -120px) scale(0.8);
     border-radius: 45% 55% 40% 60%;
   }
 }
@@ -115,7 +115,7 @@ html, body {
     border-radius: 40% 60% 60% 40%;
   }
   100% {
-    transform: translate(120px, -80px) scale(1.4);
+    transform: translate(50px, -80px) scale(1.4);
     border-radius: 60% 40% 30% 70%;
   }
 }
