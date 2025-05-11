@@ -1,8 +1,6 @@
 import { PrismaClient } from '@prisma/client'
-import { defineEventHandler, readMultipartFormData, getHeader } from 'h3'
+import { defineEventHandler, readMultipartFormData, getHeader, createError } from 'h3'
 import { getAuth } from 'firebase-admin/auth'
-import { uploadPoster } from '@/server/utils/uploadPoster'
-
 const prisma = new PrismaClient()
 
 export default defineEventHandler(async (event) => {
@@ -29,24 +27,33 @@ export default defineEventHandler(async (event) => {
       throw new Error('No tienes permisos para crear eventos')
     }
 
-    // Extraer datos del formulario
-    const title = formData.find(f => f.name === 'title')?.data.toString()
-    const description = formData.find(f => f.name === 'description')?.data.toString()
-    const date = formData.find(f => f.name === 'date')?.data.toString()
-    const time = formData.find(f => f.name === 'time')?.data.toString()
-    const city = formData.find(f => f.name === 'city')?.data.toString()
-    const price = parseFloat(formData.find(f => f.name === 'price')?.data.toString())
-    const totalTickets = parseInt(formData.find(f => f.name === 'totalTickets')?.data.toString())
-    const categoryId = formData.find(f => f.name === 'categoryId')?.data.toString()
-    const venueId = formData.find(f => f.name === 'venueId')?.data.toString()
-    const venueName = formData.find(f => f.name === 'venueName')?.data.toString()
-    const venueCity = formData.find(f => f.name === 'venueCity')?.data.toString()
-    const venueCapacity = formData.find(f => f.name === 'venueCapacity')?.data.toString()
-    const venueAddress = formData.find(f => f.name === 'venueAddress')?.data.toString()
+    // Función auxiliar para extraer datos
+    const getField = (name) => formData.find(f => f.name === name)?.data.toString() || ''
+
+    // Extraer datos
+    const title = getField('title')
+    const description = getField('description')
+    const date = getField('date')
+    const time = getField('time')
+    const city = getField('city')
+    const price = parseFloat(getField('price'))
+    const totalTickets = parseInt(getField('totalTickets'), 10)
+    const categoryIdRaw = getField('categoryId')
+    const categoryId = categoryIdRaw ? parseInt(categoryIdRaw, 10) : null
+    if (categoryIdRaw && isNaN(categoryId)) {
+      throw new Error('ID de categoría inválido')
+    }
+    const venueIdRaw = getField('venueId')
+    const venueId = venueIdRaw ? parseInt(venueIdRaw, 10) : null
+    const venueName = getField('venueName')
+    const venueCity = getField('venueCity')
+    const venueCapacityRaw = getField('venueCapacity')
+    const venueCapacity = venueCapacityRaw ? parseInt(venueCapacityRaw, 10) : 10000
+    const venueAddress = getField('venueAddress')
     const posterFile = formData.find(f => f.name === 'poster')
 
     // Validar datos requeridos
-    if (!title || !description || !date || !time || !city || !price || !totalTickets) {
+    if (!title || !description || !date || !time || !city || isNaN(price) || isNaN(totalTickets)) {
       throw new Error('Faltan campos requeridos')
     }
 
@@ -60,7 +67,7 @@ export default defineEventHandler(async (event) => {
     let venue
     if (venueId) {
       venue = await prisma.venue.findUnique({
-        where: { id: parseInt(venueId) }
+        where: { id: venueId }
       })
       if (!venue) {
         throw new Error('Recinto no encontrado')
@@ -70,7 +77,7 @@ export default defineEventHandler(async (event) => {
         data: {
           name: venueName,
           city: venueCity || city,
-          capacity: parseInt(venueCapacity) || 10000,
+          capacity: venueCapacity,
           address: venueAddress || ''
         }
       })
@@ -81,7 +88,11 @@ export default defineEventHandler(async (event) => {
     // Subir poster si existe
     let posterUrl = null
     if (posterFile) {
-      posterUrl = await uploadPoster(posterFile.data, posterFile.filename?.split('.').pop() || 'jpg', posterFile.filename)
+      posterUrl = await uploadPoster(
+        posterFile.data,
+        posterFile.filename?.split('.').pop() || 'jpg',
+        posterFile.filename
+      )
     }
 
     // Crear el evento
@@ -95,7 +106,7 @@ export default defineEventHandler(async (event) => {
         availableTickets: totalTickets,
         poster: posterUrl,
         venueId: venue.id,
-        categoryId: categoryId || null,
+        categoryId,
         promoters: {
           create: {
             userId: user.id,

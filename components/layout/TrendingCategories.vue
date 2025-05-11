@@ -95,12 +95,7 @@ const handleCategoryClick = async (categoryId) => {
       Categorías Populares
     </h2>
 
-    <!-- Debug info -->
-    <div class="text-sm text-gray-500 mb-4">
-      Estado: {{ isLoadingCategories ? 'Cargando' : 'Cargado' }} | 
-      Categorías: {{ categories?.length || 0 }} | 
-      Error: {{ error || 'Ninguno' }}
-    </div>
+
 
     <!-- Mensaje de error -->
     <div v-if="error" class="text-red-500 text-center py-4">
