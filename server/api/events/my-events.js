@@ -28,33 +28,35 @@ export default defineEventHandler(async (event) => {
       include: {
         event: {
           include: {
-            venue: true 
+            venue: true
           }
         },
         order: true
       }
     })
 
-    const events = tickets.map(ticket => ({
-      ticketId: ticket.id,
-      qr: ticket.qr,
-      purchaseDate: ticket.purchaseDate,
-      validate: ticket.validate,
-      validatedAt: ticket.validatedAt,
-      orderId: ticket.orderId,
-      event: {
-        id: ticket.event.id,
-        title: ticket.event.title,
-        dateTime: ticket.event.dateTime,
-        city: ticket.event.city,
-        price: ticket.event.price,
-        poster: ticket.event.poster,
-        venue: {
-          name: ticket.event.venue?.name || null,
-          city: ticket.event.venue?.city || null
+    const events = tickets
+      .filter(ticket => ticket.event !== null) // 🛡️ Filtramos tickets sin evento
+      .map(ticket => ({
+        ticketId: ticket.id,
+        qr: ticket.qr,
+        purchaseDate: ticket.purchaseDate,
+        validate: ticket.validate,
+        validatedAt: ticket.validatedAt,
+        orderId: ticket.orderId,
+        event: {
+          id: ticket.event.id,
+          title: ticket.event.title,
+          dateTime: ticket.event.dateTime,
+          city: ticket.event.city,
+          price: ticket.event.price,
+          poster: ticket.event.poster,
+          venue: {
+            name: ticket.event.venue?.name || null,
+            city: ticket.event.venue?.city || null
+          }
         }
-      }
-    }))
+      }))
 
     return { events }
   } catch (err) {

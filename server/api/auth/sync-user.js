@@ -2,9 +2,17 @@ import { PrismaClient } from '@prisma/client'
 const prisma = new PrismaClient()
 
 export default defineEventHandler(async (event) => {
+  // Verificar que el método sea POST
+  if (event.method !== 'POST') {
+    throw createError({
+      statusCode: 405,
+      message: 'Método no permitido. Solo se permite POST.'
+    })
+  }
+
   const body = await readBody(event)
   const { email, uid, displayName } = body
-
+  
   if (!email || !uid) {
     throw createError({
       statusCode: 400,
