@@ -130,6 +130,16 @@ const saveEvent = async () => {
   formError.value = ''
   formSuccess.value = ''
   try {
+    // 🚨 Primero, validar que la fecha no sea pasada
+    const selectedDateTime = new Date(`${eventForm.value.date}T${eventForm.value.time}`)
+    const now = new Date()
+
+    if (selectedDateTime < now) {
+      formError.value = 'No puedes crear un evento con fecha pasada.'
+      return
+    }
+
+    // 🚀 Si pasa la validación, continuamos
     const auth = getAuth()
     const token = await auth.currentUser.getIdToken()
 
