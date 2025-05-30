@@ -553,7 +553,7 @@ const onRowEditSave = async (event) => {
             <Column 
               frozen 
               align-frozen="right" 
-              style="min-width: 8rem" 
+              style="min-width: 10rem" 
               bodyStyle="text-align:center"
             >
               <template #body="{ data, editorInitCallback }">
@@ -566,6 +566,16 @@ const onRowEditSave = async (event) => {
                   v-tooltip.top="'Editar evento'"
                   :aria-label="'Editar evento ' + data.title"
                 />
+                <NuxtLink :to="`/validator/${data.id}`">
+                  <Button 
+                    icon="pi pi-check-circle" 
+                    severity="success" 
+                    text 
+                    rounded 
+                    v-tooltip.top="'Validar evento'"
+                    :aria-label="'Validar evento ' + data.title"
+                  />
+                </NuxtLink>
                 <Button 
                   icon="pi pi-trash" 
                   severity="danger" 
