@@ -5,6 +5,7 @@ import { useUserStore } from '@/stores/user'
 import { signOut } from 'firebase/auth'
 import QrcodeVue from 'qrcode.vue'
 import Tag from 'primevue/tag'
+import Dialog from 'primevue/dialog'
 
 definePageMeta({
   middleware: 'auth'
@@ -23,6 +24,7 @@ const groupedEvents = ref({})
 const showQRModal = ref(false)
 const selectedQRCodes = ref([])
 const selectedEventTitle = ref('')
+const regeneratingEventId = ref(null)
 
 watch(
   () => userStore.user,
@@ -98,10 +100,42 @@ const handleImageUpload = (event) => {
   }
 }
 
-const showQR = (qrs, title) => {
-  selectedQRCodes.value = qrs
-  selectedEventTitle.value = title
-  showQRModal.value = true
+const showQR = async (qrs, title, eventId) => {
+  try {
+    regeneratingEventId.value = eventId
+    selectedEventTitle.value = title
+    
+    // Regenerar códigos QR antes de mostrar el modal
+    console.log('🔄 Regenerando códigos QR para evento:', eventId)
+    
+    const response = await $fetch('/api/dashboard/generateqr', {
+      method: 'PATCH',
+      body: {
+        firebaseUid: userStore.user.firebaseUid,
+        eventId: eventId
+      }
+    })
+    
+    if (response.success) {
+      // Actualizar los QR en el estado local con los nuevos códigos
+      selectedQRCodes.value = response.tickets
+      
+      // También actualizar el estado global de eventos
+      if (groupedEvents.value[eventId]) {
+        groupedEvents.value[eventId].qrs = response.tickets
+      }
+      
+      console.log('✅ Códigos QR regenerados:', response.tickets)
+      showQRModal.value = true
+    }
+  } catch (error) {
+    console.error('❌ Error al regenerar códigos QR:', error)
+    // En caso de error, mostrar los códigos QR antiguos
+    selectedQRCodes.value = qrs
+    showQRModal.value = true
+  } finally {
+    regeneratingEventId.value = null
+  }
 }
 
 const logout = async () => {
@@ -178,10 +212,12 @@ const logout = async () => {
                 </div>
               </div>
               <button 
-                @click="showQR(groupedEvents[eventId].qrs, groupedEvents[eventId].event.title)" 
-                class="bg-black text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200 flex items-center">
-                <i class="pi pi-qrcode text-white mr-2"></i>
-                Ver entradas
+                @click="showQR(groupedEvents[eventId].qrs, groupedEvents[eventId].event.title, eventId)" 
+                :disabled="regeneratingEventId === eventId"
+                class="bg-black text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200 flex items-center disabled:opacity-50 disabled:cursor-not-allowed">
+                <i v-if="regeneratingEventId === eventId" class="pi pi-spin pi-spinner text-white mr-2"></i>
+                <i v-else class="pi pi-qrcode text-white mr-2"></i>
+                {{ regeneratingEventId === eventId ? 'Regenerando...' : 'Ver entradas' }}
               </button>
             </div>
           </div>
