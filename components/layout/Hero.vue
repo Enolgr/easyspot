@@ -13,7 +13,7 @@ onMounted(() => {
 
 <template>
   <!-- Fondo de blobs -->
-  <div class="gradient-bg absolute inset-0 flex items-center justify-center w-[100%]">
+  <div class="gradient-bg absolute inset-0 flex items-center justify-center w-[100%] pointer-events-none">
     <div class="gradients-container absolute inset-0 overflow-hidden" :class="{ 'loaded': isLoaded }">
       <div class="blob blob1 bg-gradient-to-br from-[#15469F] to-[#F1C80C]"></div>
       <div class="blob blob2 bg-gradient-to-br from-[#15469F] to-[#86378E]"></div>
@@ -49,6 +49,7 @@ html, body {
   opacity: 0;
   transition: opacity 2s ease-in-out;
   z-index: -1; /* Asegura que esté detrás del contenido */
+  pointer-events: none; /* Permite que los clics pasen a través */
 }
 
 .gradients-container.loaded {
