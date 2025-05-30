@@ -8,10 +8,10 @@ export const useUserStore = defineStore('user', {
   actions: {
     setUser(userData) {
       if (!userData.role) {
-        console.warn('⚠️ El usuario no tiene rol definido, esto puede romper el middleware.')
+        console.warn(' El usuario no tiene rol definido, esto puede romper el middleware.')
       }
 
-      console.log('✅ Guardando usuario en store:', userData)
+      console.log('Guardando usuario en store:', userData)
       this.user = userData
       this.isReady = true
     },
