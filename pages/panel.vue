@@ -8,6 +8,13 @@ import { ref, computed, onMounted } from 'vue'
 import { useUserStore } from '@/stores/user'
 import Modal from '@/components/layout/Modal.vue'
 import { getAuth } from 'firebase/auth'
+import DataTable from 'primevue/datatable'
+import Column from 'primevue/column'
+import InputText from 'primevue/inputtext'
+import Tag from 'primevue/tag'
+import Button from 'primevue/button'
+import DatePicker from 'primevue/datepicker'
+import InputNumber from 'primevue/inputnumber'
 
 const userStore = useUserStore()
 
@@ -66,6 +73,8 @@ const eventForm = ref({
 const venues = ref([])
 const categories = ref([])
 
+const editingRows = ref([])
+
 onMounted(async () => {
   await loadData()
   await loadCategories()
@@ -73,8 +82,8 @@ onMounted(async () => {
 
 const loadCategories = async () => {
   try {
-    const { data } = await useFetch('/api/categories')
-    categories.value = data.value || []
+    const data = await $fetch('/api/categories')
+    categories.value = data || []
   } catch (error) {
     console.error('Error al cargar categorías:', error)
     categories.value = []
@@ -87,18 +96,27 @@ const loadData = async () => {
     const auth = getAuth()
     const token = await auth.currentUser.getIdToken()
 
-    const { data: venueData } = await useFetch('/api/dashboard/venues', {
+    console.log('Cargando datos de venues...')
+    const venueData = await $fetch('/api/dashboard/venues', {
       headers: { Authorization: `Bearer ${token}` }
     })
-    venues.value = venueData.value || []
+    venues.value = venueData || []
+    console.log('Venues cargados:', venues.value)
 
-    const { data, error } = await useFetch('/api/dashboard/admin-events', {
+    console.log('Cargando eventos...')
+    const data = await $fetch('/api/dashboard/admin-events', {
       headers: { Authorization: `Bearer ${token}` }
     })
+    console.log('Datos recibidos de eventos:', data)
 
-    if (error.value) throw new Error(error.value.message)
+    if (!Array.isArray(data)) {
+      console.error('Los datos recibidos no son un array:', data)
+      events.value = []
+      return
+    }
 
-    events.value = Array.isArray(data.value) ? data.value : []
+    events.value = data
+    console.log('Eventos cargados:', events.value)
     recentEvents.value = events.value.slice(0, 4)
 
     // Preparar datos para la gráfica solo con eventos próximos
@@ -114,10 +132,11 @@ const loadData = async () => {
 
     stats.value = {
       totalEvents: events.value.length,
-      upcomingEvents: 0,
-      totalTicketsSold: events.value.reduce((acc, e) => acc + e.ticketsSold, 0),
-      totalRevenue: events.value.reduce((acc, e) => acc + e.revenue, 0)
+      upcomingEvents: events.value.filter(e => new Date(e.dateTime) > now).length,
+      totalTicketsSold: events.value.reduce((acc, e) => acc + (e.ticketsSold || 0), 0),
+      totalRevenue: events.value.reduce((acc, e) => acc + (e.revenue || 0), 0)
     }
+    console.log('Estadísticas actualizadas:', stats.value)
   } catch (error) {
     console.error('Error al cargar datos:', error)
     events.value = []
@@ -255,6 +274,7 @@ const confirmDelete = async () => {
 const formatDate = (dateTimeString) => {
   const date = new Date(dateTimeString)
   return date.toLocaleString('es-ES', {
+    timeZone: 'Europe/Madrid',
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
@@ -293,6 +313,87 @@ const filteredEvents = computed(() => {
 
   return result
 })
+
+const filters = ref({
+  global: { value: null }
+})
+
+const onRowEditSave = async (event) => {
+  try {
+    const { data, newData } = event;
+    console.log('Datos de edición recibidos:', { data, newData });
+
+    const auth = getAuth();
+    const token = await auth.currentUser.getIdToken();
+
+    let processedDate, processedTime;
+
+    const originalDate = new Date(data.dateTime)
+
+    // Manejar fecha - usar newData.date si existe, sino la original
+    if (newData.date instanceof Date) {
+      const year = newData.date.getFullYear()
+      const month = String(newData.date.getMonth() + 1).padStart(2, '0')
+      const day = String(newData.date.getDate()).padStart(2, '0')
+      processedDate = `${year}-${month}-${day}`
+    } else {
+      processedDate = originalDate.toISOString().split('T')[0]
+    }
+
+    // Manejar hora - usar newData.time si existe, sino la original  
+    if (newData.time instanceof Date) {
+      const hours = String(newData.time.getHours()).padStart(2, '0')
+      const minutes = String(newData.time.getMinutes()).padStart(2, '0')
+      processedTime = `${hours}:${minutes}`
+    } else {
+      processedTime = originalDate.toTimeString().slice(0, 5)
+    }
+
+    // Crear el objeto de datos con valores actualizados o originales
+    const updateData = {
+      title: newData.title || data.title,
+      description: newData.description || data.description || '',
+      date: processedDate,
+      time: processedTime,
+      city: newData.city || data.city,
+      price: (newData.price || data.price).toString(),
+      totalTickets: (newData.totalTickets || data.totalTickets).toString(),
+      categoryId: (newData.categoryId || data.categoryId)?.toString() || '',
+      venueId: (newData.venueId || data.venueId)?.toString() || ''
+    };
+
+    console.log('Datos a enviar:', updateData);
+
+    const res = await fetch(`/api/dashboard/admin-events/${newData.id || data.id}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify(updateData)
+    });
+
+    if (!res.ok) {
+      const error = await res.text();
+      console.error('Error en la respuesta:', error);
+      throw new Error(error || 'Error al actualizar el evento');
+    }
+
+    const response = await res.json();
+    console.log('Respuesta del servidor:', response);
+
+    if (response.success) {
+      console.log('Recargando datos después de actualización...')
+      await loadData();
+      formSuccess.value = 'Evento actualizado correctamente';
+    } else {
+      throw new Error('Error al actualizar el evento');
+    }
+  } catch (error) {
+    console.error('Error al actualizar evento:', error);
+    formError.value = error.message || 'Error al actualizar el evento';
+  }
+};
 
 </script>
 
@@ -351,38 +452,152 @@ const filteredEvents = computed(() => {
             No tienes eventos creados.
           </div>
 
-          <div class="overflow-x-auto">
-            <table class="min-w-full bg-white shadow border rounded-md">
-              <thead class="bg-gray-100 text-left text-sm font-medium">
-                <tr>
-                  <th class="px-4 py-3 whitespace-nowrap">Título</th>
-                  <th class="px-4 py-3 whitespace-nowrap">Ciudad</th>
-                  <th class="px-4 py-3 whitespace-nowrap">Estado</th>
-                  <th class="px-4 py-3 whitespace-nowrap">Fecha</th>
-                  <th class="px-4 py-3 whitespace-nowrap">Entradas</th>
-                  <th class="px-4 py-3 whitespace-nowrap">Ingresos</th>
-                  <th class="px-4 py-3 whitespace-nowrap text-right">Acciones</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="event in filteredEvents" :key="event.id" class="border-t text-sm">
-                  <td class="px-4 py-2 whitespace-nowrap">{{ event.title }}</td>
-                  <td class="px-4 py-2 whitespace-nowrap">{{ event.city }}</td>
-                  <td class="px-4 py-2 whitespace-nowrap">
-                    <span :class="event.isPast ? 'text-purple-400' : 'text-green-600'">
-                      {{ event.isPast ? 'Finalizado' : 'Próximo' }}
-                    </span>
-                  </td>
-                  <td class="px-4 py-2 whitespace-nowrap">{{ formatDate(event.dateTime) }}</td>
-                  <td class="px-4 py-2 whitespace-nowrap">{{ event.ticketsSold }} / {{ event.totalTickets }}</td>
-                  <td class="px-4 py-2 whitespace-nowrap">{{ formatCurrency(event.revenue) }}</td>
-                  <td class="px-4 py-2 whitespace-nowrap text-right">
-                    <button @click="deleteEvent(event.id)" class="text-red-600 hover:underline">Eliminar</button>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
+          <DataTable 
+            :value="filteredEvents" 
+            tableStyle="min-width: 50rem"
+            class="p-datatable-sm"
+            stripedRows
+            showGridlines
+            responsiveLayout="scroll"
+            :globalFilterFields="['title', 'city']"
+            v-model:filters="filters"
+            filterDisplay="menu"
+            :scrollable="true"
+            scrollHeight="flex"
+            v-model:editingRows="editingRows"
+            editMode="row"
+            dataKey="id"
+            @row-edit-save="onRowEditSave"
+            :pt="{
+              table: { style: 'min-width: 50rem' },
+              column: {
+                bodycell: ({ state }) => ({
+                  style: state['d_editing'] ? 'padding-top: 0.6rem; padding-bottom: 0.6rem' : ''
+                })
+              }
+            }"
+          >
+            <template #header>
+              <div class="flex justify-between items-center">
+                <span class="text-xl text-900 font-bold">Eventos</span>
+                <span class="p-input-icon-left">
+                  <i class="pi pi-search" />
+                  <InputText v-model="filters['global'].value" placeholder="Buscar..." />
+                </span>
+              </div>
+            </template>
+
+            <Column field="title" header="Título" sortable style="min-width: 12rem">
+              <template #editor="{ data, field }">
+                <InputText v-model="data[field]" class="w-full" />
+              </template>
+            </Column>
+
+            <Column field="city" header="Ciudad" sortable style="min-width: 10rem">
+              <template #editor="{ data, field }">
+                <InputText v-model="data[field]" class="w-full" />
+              </template>
+            </Column>
+
+            <Column field="isPast" header="Estado" sortable style="min-width: 8rem">
+              <template #body="{ data }">
+                <Tag :severity="data.isPast ? 'warning' : 'success'" :value="data.isPast ? 'Finalizado' : 'Próximo'" />
+              </template>
+            </Column>
+
+            <Column field="dateTime" header="Fecha" sortable style="min-width: 12rem">
+              <template #body="{ data }">
+                {{ formatDate(data.dateTime) }}
+              </template>
+              <template #editor="{ data, field }">
+                <div class="flex gap-2">
+                  <DatePicker 
+                    :model-value="new Date(data.dateTime)"
+                    @update:model-value="(val) => data.date = val"
+                    dateFormat="yy-mm-dd" 
+                    class="w-full" 
+                    :showIcon="true"
+                    :showTime="false"
+                    :manualInput="false"
+                    :minDate="new Date()"
+                  />
+                  <DatePicker 
+                    :model-value="new Date(data.dateTime)"
+                    @update:model-value="(val) => data.time = val"
+                    timeOnly 
+                    hourFormat="24" 
+                    class="w-full"
+                    :showIcon="true"
+                    :showSeconds="false"
+                    :manualInput="false"
+                  />
+                </div>
+              </template>
+            </Column>
+
+            <Column field="ticketsSold" header="Entradas" sortable style="min-width: 10rem">
+              <template #body="{ data }">
+                {{ data.ticketsSold }} / {{ data.totalTickets }}
+              </template>
+              <template #editor="{ data }">
+                <InputNumber v-model="data.totalTickets" class="w-full" />
+              </template>
+            </Column>
+
+            <Column field="revenue" header="Ingresos" sortable style="min-width: 10rem">
+              <template #body="{ data }">
+                {{ formatCurrency(data.revenue) }}
+              </template>
+            </Column>
+
+            <Column 
+              frozen 
+              align-frozen="right" 
+              style="min-width: 8rem" 
+              bodyStyle="text-align:center"
+            >
+              <template #body="{ data, editorInitCallback }">
+                <Button 
+                  icon="pi pi-pencil" 
+                  severity="info" 
+                  text 
+                  rounded 
+                  @click="editorInitCallback"
+                  v-tooltip.top="'Editar evento'"
+                  :aria-label="'Editar evento ' + data.title"
+                />
+                <Button 
+                  icon="pi pi-trash" 
+                  severity="danger" 
+                  text 
+                  rounded 
+                  @click="deleteEvent(data.id)"
+                  v-tooltip.top="'Eliminar evento'"
+                  :aria-label="'Eliminar evento ' + data.title"
+                />
+              </template>
+              <template #editor="{ data, editorSaveCallback, editorCancelCallback }">
+                <Button 
+                  icon="pi pi-check" 
+                  severity="success" 
+                  text 
+                  rounded 
+                  @click="editorSaveCallback"
+                  v-tooltip.top="'Guardar cambios'"
+                  :aria-label="'Guardar cambios del evento ' + data.title"
+                />
+                <Button 
+                  icon="pi pi-times" 
+                  severity="danger" 
+                  text 
+                  rounded 
+                  @click="editorCancelCallback"
+                  v-tooltip.top="'Cancelar edición'"
+                  :aria-label="'Cancelar edición del evento ' + data.title"
+                />
+              </template>
+            </Column>
+          </DataTable>
         </section>
 
         <Modal :is-open="isCreatingEvent" title="Crear Evento" @close="isCreatingEvent = false" class="max-w-4xl">
@@ -539,5 +754,95 @@ const filteredEvents = computed(() => {
 }
 .btn-secondary {
   @apply bg-white text-slate-700 px-4 py-2 rounded-md border border-gray-300 hover:bg-gray-50;
+}
+
+:deep(.p-datatable) {
+  background-color: white !important;
+}
+
+:deep(.p-datatable .p-datatable-header) {
+  background-color: white !important;
+  border: 1px solid #e5e7eb !important;
+}
+
+:deep(.p-datatable .p-datatable-thead > tr > th) {
+  background-color: #f9fafb !important;
+  color: #374151 !important;
+  border: 1px solid #e5e7eb !important;
+}
+
+:deep(.p-datatable .p-datatable-tbody > tr) {
+  background-color: white !important;
+  color: #374151 !important;
+}
+
+:deep(.p-datatable .p-datatable-tbody > tr:nth-child(even)) {
+  background-color: #f9fafb !important;
+}
+
+:deep(.p-datatable .p-datatable-tbody > tr > td) {
+  border: 1px solid #e5e7eb !important;
+  background-color: inherit !important;
+}
+
+:deep(.p-datatable .p-datatable-tbody > tr > td.p-frozen-column) {
+  background-color: inherit !important;
+}
+
+:deep(.p-datatable .p-datatable-tbody > tr:nth-child(even) > td.p-frozen-column) {
+  background-color: inherit !important;
+}
+
+:deep(.p-inputtext) {
+  background-color: white !important;
+  border: 1px solid #e5e7eb !important;
+  color: #374151 !important;
+}
+
+:deep(.p-tag) {
+  background-color: #f3f4f6 !important;
+  color: #374151 !important;
+}
+
+:deep(.p-tag.p-tag-success) {
+  background-color: #dcfce7 !important;
+  color: #166534 !important;
+}
+
+:deep(.p-tag.p-tag-warning) {
+  background-color: #fef3c7 !important;
+  color: #92400e !important;
+}
+
+:deep(.p-button.p-button-text) {
+  color: #374151 !important;
+}
+
+:deep(.p-button.p-button-text:hover) {
+  background-color: #f3f4f6 !important;
+}
+
+:deep(.p-button.p-button-text.p-button-danger) {
+  color: #dc2626 !important;
+}
+
+:deep(.p-button.p-button-text.p-button-danger:hover) {
+  background-color: #fee2e2 !important;
+}
+
+:deep(.p-button.p-button-text.p-button-success) {
+  color: #059669 !important;
+}
+
+:deep(.p-button.p-button-text.p-button-success:hover) {
+  background-color: #d1fae5 !important;
+}
+
+:deep(.p-button.p-button-text.p-button-info) {
+  color: #0284c7 !important;
+}
+
+:deep(.p-button.p-button-text.p-button-info:hover) {
+  background-color: #e0f2fe !important;
 }
 </style>
