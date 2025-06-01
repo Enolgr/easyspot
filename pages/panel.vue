@@ -225,8 +225,16 @@ const createEvent = () => {
     category: '',
     poster: null
   }
+  formError.value = ''
+  formSuccess.value = ''
   isCreatingEvent.value = true
   activeSection.value = 'eventForm'
+}
+
+const closeCreateEventModal = () => {
+  formError.value = ''
+  formSuccess.value = ''
+  isCreatingEvent.value = false
 }
 
 const editEvent = (event) => {
@@ -610,7 +618,7 @@ const onRowEditSave = async (event) => {
           </DataTable>
         </section>
 
-        <Modal :is-open="isCreatingEvent" title="Crear Evento" @close="isCreatingEvent = false" class="max-w-4xl">
+        <Modal :is-open="isCreatingEvent" title="Crear Evento" @close="closeCreateEventModal" class="max-w-4xl">
           <form @submit.prevent="saveEvent" class="space-y-6">
             <div v-if="formError" class="text-red-600 bg-red-100 p-3 rounded-md mb-4">
               {{ formError }}
@@ -734,7 +742,7 @@ const onRowEditSave = async (event) => {
 
             <!-- Botones de acción -->
             <div class="flex justify-end gap-3 mt-8 pt-4 border-t">
-              <button type="button" @click="isCreatingEvent = false" class="btn-secondary py-3 px-6">Cancelar</button>
+              <button type="button" @click="closeCreateEventModal" class="btn-secondary py-3 px-6">Cancelar</button>
               <button type="submit" class="btn-primary py-3 px-6">Guardar</button>
             </div>
           </form>
