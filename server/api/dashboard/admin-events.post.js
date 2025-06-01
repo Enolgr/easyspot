@@ -73,8 +73,14 @@ export default defineEventHandler(async (event) => {
         throw new Error('Recinto no encontrado')
       }
     } else if (venueName) {
-      venue = await prisma.venue.create({
-        data: {
+      venue = await prisma.venue.upsert({
+        where: { name: venueName },
+        update: {
+          city: venueCity || city,
+          capacity: venueCapacity,
+          address: venueAddress || ''
+        },
+        create: {
           name: venueName,
           city: venueCity || city,
           capacity: venueCapacity,
